@@ -38,7 +38,7 @@ labels, s_vals, m_vals = [], [], []
 for i in range(questions[sel_q] + 1, len(df_s)):
     row_s, row_m = df_s.iloc[i], df_m.iloc[i]
     if pd.isna(row_s[0]) or "q" in str(row_s[0]).lower(): break
-    if any(x in str(row_s[0]).lower() for x in ["total", "סה\"כ"]): continue
+    if "total" in str(row_s[0]).lower() or "סהכ" in str(row_s[0]).lower() or "סה\"כ" in str(row_s[0]).lower(): continue
     labels.append(str(row_s[0]))
     s_vals.append(pd.to_numeric(row_s[t_col], errors='coerce') or 0.0)
     m_vals.append(pd.to_numeric(row_m[t_col], errors='coerce') or 0.0)
