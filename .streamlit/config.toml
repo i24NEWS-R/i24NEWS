@@ -1,6 +1,6 @@
 [theme]
-primaryColor = "#4f46e5"
-backgroundColor = "#f8fafc"
-secondaryBackgroundColor = "#ffffff"
-textColor = "#0f172a"
+primaryColor = "#2563eb"          # כחול ניאון בולט לסימונים וכפתורים
+backgroundColor = "#0f172a"       # רקע כהה עמוק (Slate 900)
+secondaryBackgroundColor = "#1e293b" # רקע תיבות הבחירה והתפריטים (Slate 800)
+textColor = "#f8fafc"             # טקסט לבן-אפרפר נקי
 font = "sans serif"
