@@ -1,12 +1,2 @@
-[theme]
-# צבע הבסיס של המערכת (יכול להיות "light" או "dark")
-base = "light"
-
-# הצבע המוביל של המותג (כפתורים, סימונים, קווים) שיישאר זהה בשני המצבים
-primaryColor = "#2563eb"
-
-# הגופן של המערכת
-font = "sans serif"
-
 [client]
 showSidebarNavigation = false
