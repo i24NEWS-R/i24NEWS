@@ -168,8 +168,8 @@ with col_chart:
                 side="right", 
                 categoryorder="array",
                 categoryarray=labels[::-1], 
-                tickfont=dict(size=13, color="#0f172a"),
-                tickpad=15 # <--- התוקן כאן (במקום pad)
+                tickfont=dict(size=13, color="#0f172a")
+                # השורה הבעייתית הוסרה לחלוטין
             )
         )
         
