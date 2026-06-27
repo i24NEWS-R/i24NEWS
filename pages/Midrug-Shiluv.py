@@ -59,7 +59,7 @@ st.title("📊 השוואת מדרוג מול סקר שילוב")
 
 # אזור הפילטרים - חלוקה מדויקת המקצה עמודה לכותרת, ועמודה נפרדת לפילטרים
 with st.container(border=True):
-    title_col, filters_col = st.columns([1.1, 2.9])
+    title_col, filters_col = st.columns([1.1, 2.7])
     
     with title_col:
         st.markdown("### 🎯 סינון נתונים")
