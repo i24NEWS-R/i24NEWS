@@ -29,7 +29,7 @@ st.markdown("""
         div[data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #ffffff !important;
             padding: 24px !important;
-            border-radius: 12px !important; /* MD3 משתמש בפינות מעוגלות של 12-16px */
+            border-radius: 12px !important; 
             border: none !important;
             box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.2), 0px 1px 1px 0px rgba(0,0,0,0.14), 0px 1px 3px 0px rgba(0,0,0,0.12) !important;
         }
@@ -66,7 +66,7 @@ st.markdown("""
             color: #3c4043 !important;
         }
         div[data-testid="stRadio"] label:hover {
-            background-color: #f1f3f4 !important; /* Material Gray 100 */
+            background-color: #f1f3f4 !important; 
         }
         
         /* כותרות קטנות בכרטיסיות (Subtitle) */
@@ -219,7 +219,7 @@ with col_chart:
                     range=[safe_max, safe_min],
                     tickvals=clean_ticks,
                     showgrid=True, 
-                    gridcolor="#e8eaed", /* Material Grey 200 */
+                    gridcolor="#e8eaed", # Material Grey 200 - תוקן!
                     zeroline=False,
                     side="top",
                     ticksuffix="%", 
