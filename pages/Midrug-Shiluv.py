@@ -108,12 +108,13 @@ plot_df = df_f[df_f['question_text'] == sel_q]
 labels = plot_df['answer_text'].drop_duplicates().tolist()
 
 with chart_col:
+    # כרטיס נפרד המציג את מראה המיקום בחלק העליון
+    if labels:
+        demo_display = sel_d if 'sel_d' in locals() and sel_w == "ממוצע שני הגלים" else "כללי"
+        st.markdown(f"<div style='border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; background-color: #f9fafb; font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:12px;'>{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; {demo_display}</div>", unsafe_allow_html=True)
+        
     with st.container(border=True):
         if labels:
-            # מראה מיקום בטקסט קטן ובולד בראש הקונטיינר
-            demo_display = sel_d if 'sel_d' in locals() and sel_w == "ממוצע שני הגלים" else "כללי"
-            st.markdown(f"<p style='font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:4px;'>{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; {demo_display}</p>", unsafe_allow_html=True)
-            
             st.markdown(f"### {sel_q}")
             st.write("")
             
@@ -278,7 +279,6 @@ if len(available_channels) > 1:
                                 line=dict(color='white', width=2)
                             ),
                             hovertemplate=f"{channel}<br>נתח מתוך הברודקאסט: %{{x:.1f}}%<extra></extra>",
-                            # שימוש בערך מספרי רגיל, פלוטלי ידאג למיקום האופקי והאנכי
                             text=f"{normalized_share:.1f}%" if normalized_share > 4.5 else "", 
                             textposition='inside',
                             insidetextanchor="middle",
@@ -289,6 +289,7 @@ if len(available_channels) > 1:
                 barmode='stack',
                 height=400,
                 autosize=True,
+                bargap=0.3,
                 margin=dict(l=125, r=20, t=20, b=50),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
