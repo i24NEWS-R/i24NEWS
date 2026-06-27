@@ -5,11 +5,20 @@ import os
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# סגנון קבוע בלבד
+# סגנון קבוע ודריסה ספציפית לתרשים כדי שהטקסטים לא יברחו או ייחתכו
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
     .stRadio > div {padding:1.5rem;}
+    
+    /* דריסת כיווניות עבור התרשים כדי למנוע היעלמות לייבלים */
+    div[data-testid="stPlotlyChart"] * {
+        direction: ltr !important;
+        text-align: left !important;
+    }
+    div[data-testid="stPlotlyChart"] {
+        direction: ltr !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,8 +72,8 @@ with chart_col:
         if labels:
             fig = go.Figure()
             
-            # עטיפת הלייבלים כך שיוצגו בבטחה משמאל לגרף (LTR רחב)
-            wrapped_labels = [f"<span style='display: inline-block; width: 250px; white-space: normal; text-align: left; direction: ltr;'>{lbl}</span>" for lbl in labels]
+            # הגדרת רוחב קבוע ללייבלים כדי למנוע חריגה ועליה על התרשים
+            wrapped_labels = [f"<span style='display: inline-block; width: 260px; white-space: normal; text-align: right;'>{lbl}</span>" for lbl in labels]
 
             # קווים מקווקווים המחברים בין הנקודות
             for i, ans in enumerate(labels):
@@ -80,7 +89,7 @@ with chart_col:
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False
                     ))
             
-            # פונקציה להוספת נקודות וטקסטים בצורה חכמה וללא חפיפה
+            # פונקציה להוספת נקודות וטקסטים הממוקמים חכם לפי ערך גבוה/נמוך
             def add_points(source_filter, source_name, color):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
@@ -100,7 +109,7 @@ with chart_col:
                         m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else -1
                         
                         if s_val != -1 and m_val != -1:
-                            # הערך הנמוך מוצג מימין לנקודה, הערך הגבוה משמאל לנקודה
+                            # הערך הנמוך מוצג תמיד מימין לנקודה, הערך הגבוה מוצג תמיד משמאל לנקודה
                             if val == min(s_val, m_val):
                                 txt_pos.append("middle right")
                             else:
@@ -119,7 +128,6 @@ with chart_col:
                     textposition=txt_pos, hovertemplate=hover_vals
                 ))
 
-            # הוספת הנתונים בתצורה תקינה (LTR)
             add_points('שילוב', 'סקר שילוב', '#2563eb')
             add_points('מדרוג', 'הוועדה למדרוג', '#ea580c')
 
@@ -127,30 +135,30 @@ with chart_col:
             mx = max(v_all, default=100)
             
             fig.update_layout(
-                margin=dict(l=280, r=80, t=30, b=100), # מרווח שמאלי מוגדל עבור הלייבלים
+                margin=dict(l=280, r=60, t=40, b=100), # מרווח שמאלי (L) מספק ללייבלים של התשובות
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
-                height=max(450, len(labels)*100), # גובה מותאם אישית למניעת דחיסה
+                height=max(450, len(labels)*100),
                 legend=dict(
                     orientation="h", 
-                    y=-0.35, # מקרא ממוקם בבטחה בתחתית
+                    y=-0.35, # מקרא מורחק כלפי מטה בצורה בטוחה
                     x=0.5, 
                     xanchor="center"
                 ),
                 xaxis=dict(
-                    side="top", # כותרת הציר וערכי האחוזים למעלה לנוחות קריאה ב-LTR
-                    range=[0, mx*1.2], # ציר ה-X מתחיל תמיד קשיח מ-0
+                    side="top", # ציר ה-X מוצג בחלק העליון (נוח ב-LTR)
+                    range=[0, mx*1.2], # מתחיל קשיח מ-0
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
                     ticksuffix="%"
                 ),
                 yaxis=dict(
-                    side="left", # התשובות מוצגות בצד שמאל
+                    side="left", 
                     autorange="reversed", # שומר על סדר התשובות מלמעלה למטה
                     showgrid=False,
                     zeroline=False,
-                    showticklabels=False # מציג את הלייבלים המעוצבים שלנו במקום התוויות הרגילות
+                    showticklabels=False # מציג את הלייבלים המעוצבים שלנו
                 )
             )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
