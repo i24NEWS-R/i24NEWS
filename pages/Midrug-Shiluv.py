@@ -194,7 +194,7 @@ with chart_col:
                 margin=dict(l=280, r=40, t=60, b=100), 
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
-                height=max(450, len(labels)*100),
+                height=max(450, len(labels)*25),
                 legend=dict(
                     orientation="h", 
                     y=1.15,
