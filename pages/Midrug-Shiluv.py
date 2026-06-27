@@ -321,7 +321,9 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
     st.write("") 
     with chart_col:
         with st.container(border=True):
-
+            i24_answer_text = next((ans for ans in labels if "i24" in ans), None)
+            st.markdown(f"<h3>{sel_q} &nbsp;–&nbsp; i24news</h3>", unsafe_allow_html=True)
+            st.write("")
             
             demo_table_data, demo_wrapped_labels, demo_y_s_vals, demo_y_m_vals = [], [], [], []
             all_demo_opts = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
