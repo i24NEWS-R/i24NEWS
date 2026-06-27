@@ -7,7 +7,7 @@ import math
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
 # ==========================================
-# 1. CSS מותאם אישית (RTL מלא וגורף)
+# 1. יישור RTL גורף (מוגדר פעם אחת בסיסית)
 # ==========================================
 st.markdown("""
 <style>
@@ -40,23 +40,23 @@ df = load_data()
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
 # ==========================================
-# 3. אזור הפילטרים בשורה אחת (פייתון טהור)
+# 3. אזור הפילטרים בפייתון טהור (תוויות לצד התיבות)
 # ==========================================
 with st.container(border=True):
-    # חלוקת השורה לטורים עבור כותרת האזור, התוויות והתיבות הנפתחות
-    col_title, lbl1, c1, lbl2, c2, lbl3, c3 = st.columns([2, 1.3, 3, 1.1, 3, 1.4, 3], gap="small")
+    # פריסה אופקית מובנית לגמרי בפייתון המאזנת את השורה לכל פילטר
+    col_title, lbl1, box1, lbl2, box2, lbl3, box3 = st.columns([1.8, 1.2, 3, 1.0, 3, 1.5, 3.2], gap="small")
     
     with col_title:
         st.markdown("### 🎯 סינון נתונים")
-    
+        
     with lbl1:
-        st.markdown("<div style='margin-top: 1.5rem;'>ימי מדידה:</div>", unsafe_allow_html=True)
-    with c1:
+        st.markdown("<div style='padding-top: 10px;'>ימי מדידה:</div>", unsafe_allow_html=True)
+    with box1:
         sel_period = st.selectbox("", ["אמצע שבוע", "סוף שבוע"], index=0, label_visibility="collapsed")
     
     with lbl2:
-        st.markdown("<div style='margin-top: 1.5rem;'>גל מחקר:</div>", unsafe_allow_html=True)
-    with c2:
+        st.markdown("<div style='padding-top: 10px;'>גל מחקר:</div>", unsafe_allow_html=True)
+    with box2:
         if sel_period == "אמצע שבוע":
             waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"]
         else:
@@ -64,8 +64,8 @@ with st.container(border=True):
         sel_wave = st.selectbox("", waves, index=2, label_visibility="collapsed")
     
     with lbl3:
-        st.markdown("<div style='margin-top: 1.5rem;'>פילוח דמוגרפי:</div>", unsafe_allow_html=True)
-    with c3:
+        st.markdown("<div style='padding-top: 10px;'>פילוח דמוגרפי:</div>", unsafe_allow_html=True)
+    with box3:
         if sel_wave == "חיבור שני הגלים":
             df_w = df[(df['period'] == sel_period) & (df['wave'] == sel_wave)]
             opts = df_w.apply(
@@ -80,7 +80,7 @@ with st.container(border=True):
             else:
                 cat, val = sel_demo.split(" - ", 1)
         else:
-            st.selectbox("", ["כללי (פילוח זמין בחיבור גלים)"], disabled=True, label_visibility="collapsed")
+            st.selectbox("", ["כללי (זמין בחיבור הגלים)"], disabled=True, label_visibility="collapsed")
             cat, val = "כללי", "סהכ"
 
 df_filtered = df[(df['period'] == sel_period) & (df['wave'] == sel_wave) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
@@ -133,7 +133,7 @@ with col_chart:
                     
             # פונקציה להוספת נקודות
             def add_points(vals, name, color, is_left, ns=None):
-                texts = [f"<b>{v}%</b>" if v is not None else "" for v in vals]
+                texts = [f"<b>{x}%</b>" if x is not None else "" for x in vals]
                 hover = []
                 for v, n in zip(vals, ns or [None]*len(vals)):
                     if v is None: hover.append("")
@@ -142,14 +142,14 @@ with col_chart:
                 fig.add_trace(go.Scatter(
                     x=vals, y=labels, mode="markers+text", name=name,
                     marker=dict(color=color, size=14, line=dict(color='white', width=2)),
-                    text=texts, textposition="middle left" if is_left else "middle right",
-                    hovertemplate=hover, textfont=dict(size=14, color=color, family="Assistant")
+                    text=texts, textfont=dict(size=13, color=color, family="Assistant"), 
+                    textposition="middle left" if is_left else "middle right",
+                    hovertemplate=hover
                 ))
 
             add_points(s_vals, 'סקר שילוב', '#2563eb', True, s_ns)
             add_points(m_vals, 'הוועדה למדרוג', '#ea580c', False)
 
-            # חישוב שוליים וטווחי ציר לגרף
             v_all = [v for v in s_vals + m_vals if v is not None]
             mx = max(v_all) if v_all else 100
             
