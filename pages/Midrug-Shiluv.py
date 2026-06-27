@@ -395,7 +395,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                 mx_demo = demo_max * 1.15
 
                 fig_demo.update_layout(
-                    margin=dict(l=20, r=20, t=20, b=20), # שוליים צדדיים 20-20
+                    margin=dict(l=100, r=20, t=20, b=20), # שוליים צדדיים 20-20
                     paper_bgcolor='rgba(0,0,0,0)', 
                     plot_bgcolor='rgba(0,0,0,0)',
                     height=max(250, len(demo_table_data) * 65), # מותאם אנכית לכמות הפילוחים
