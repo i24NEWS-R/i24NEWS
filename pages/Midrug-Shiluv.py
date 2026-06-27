@@ -34,6 +34,7 @@ df = load_data()
 menu_col, chart_col = st.columns([1, 5], gap="small")
 
 with menu_col:
+
     #########################################
     # תפריט צדדי - סינון נתונים
     #########################################
@@ -42,7 +43,7 @@ with menu_col:
         sel_p = st.selectbox("ימי מדידה", ["אמצע שבוע", "סוף שבוע"])
         waves = ["גל 19 במאי", "גל 25 במאי", "ממוצע שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "ממוצע שני הגלים"]
         sel_w = st.selectbox("גל מחקר", waves, index=2)
-                if sel_w == "ממוצע שני הגלים":
+        if sel_w == "ממוצע שני הגלים":
             opts = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
             sel_d = st.selectbox("פילוח דמוגרפי:", opts, index=list(opts).index("כללי") if "כללי" in opts else 0)
             cat, val = ("כללי", "סהכ") if sel_d == "כללי" else sel_d.split(" - ", 1)
@@ -54,15 +55,16 @@ with menu_col:
     if not q_list: 
         st.warning("אין נתונים עבור הסינון שנבחר.")
         st.stop()
-#########################################
+
+    #########################################
     # תפריט צדדי - בחירת שאלה
     #########################################
     with st.container(border=True):
         st.markdown("### 📋 בחירת שאלה")
         sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
-
+        
 plot_df = df_f[df_f['question_text'] == sel_q]
-labels = plot_df['answer_text'].unique().tolist()
+labels = plot_df['answer_text'].drop_duplicates().tolist()
 
 with chart_col:
     #########################################
