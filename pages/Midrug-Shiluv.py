@@ -6,40 +6,49 @@ import random
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# סגנון קבוע, דריסת כיווניות לתרשים וריווח אפשרויות הרדיו
+# סגנון קבוע, דריסת כיווניות לתרשים וסידור תפריט השאלות האופקי
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
 
-    /* הגדלת הטקסט באפשרויות הרדיו בתפריט השאלות */
-    .stRadio label div[data-testid="stMarkdownContainer"] p {
-        font-size: 15px !important;
+    /* התאמת מרווחים ויישור שורות עבור רדיו אופקי */
+    div.row-widget.stRadio > div {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        margin-bottom: 15px !important;
     }
-    
-    /* מרווח וקו תחתון בין אפשרויות הרדיו */
-    .stRadio label {
-        padding: 15px 0 !important;
-        border-bottom: 1px solid #f3f4f6;
-        display: flex !important;
+
+    /* עיצוב כרטיסי אפשרויות הבחירה בשורה האופקית */
+    div.row-widget.stRadio > div label {
+        background-color: #f9fafb !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 6px !important;
+        padding: 8px 14px !important;
+        margin: 0 !important;
+        display: inline-flex !important;
         align-items: center !important;
-        flex-direction: row !important; /* כפתור הרדיו מימין, הטקסט משמאלו */
-        justify-content: flex-start !important;
+        flex-direction: row-reverse !important; /* כפתור רדיו מימין, טקסט משמאל */
+        justify-content: flex-end !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
     }
     
-    /* ריווח כפתור הבחירה העגול והרחקתו שמאלה מהטקסט שצמוד אליו */
-    .stRadio label input[type="radio"] {
+    /* כפתור הרדיו עצמו */
+    div.row-widget.stRadio > div label input[type="radio"] {
         margin-left: 0 !important;
-        margin-right: 5px !important;
+        margin-right: 6px !important;
+    }
+
+    /* הגדלת ועיצוב הטקסט באפשרויות הרדיו */
+    div.row-widget.stRadio > div label div[data-testid="stMarkdownContainer"] p {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        color: #374151 !important;
     }
     
-    /* הוספת מרווח מפורש בין כפתור הרדיו לבין הטקסט בלייבל */
-    .stRadio label div[data-testid="stMarkdownContainer"] {
-        margin-right: 15px !important;
-    }
-    
-    /* הרחקת כותרת/נוסח השאלה מכפתור הבחירה הראשון ברשימה */
+    /* הסתרת כותרת/תוספת מיותרת מעל הרדיו */
     div.row-widget.stRadio > div > label:first-of-type {
-        margin-bottom: 10px;
+        display: none !important;
     }
 
     /* דריסת כיווניות עבור אזור התרשים בלבד למניעת בריחת טקסטים */
@@ -91,7 +100,7 @@ with st.container(border=True):
 
 df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
 
-# אזור התצוגה - תפריט בחירת שאלה ברוחב מלא 100% בראש העמוד
+# אזור התצוגה - תפריט בחירת שאלה אופקי ברוחב מלא 100% בראש העמוד
 q_list = df_f['question_text'].unique().tolist()
 if not q_list: 
     st.warning("אין נתונים עבור הסינון שנבחר.")
@@ -100,7 +109,8 @@ if not q_list:
 with st.container(border=True):
     st.markdown("### 📋 בחירת שאלה:")
     st.write("")
-    sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
+    # הוספת המאפיין horizontal=True כדי לפרוס את כפתורי הרדיו לרוחב
+    sel_q = st.radio("", q_list, index=0, label_visibility="collapsed", horizontal=True)
 
 plot_df = df_f[df_f['question_text'] == sel_q]
 labels = plot_df['answer_text'].drop_duplicates().tolist()
@@ -331,7 +341,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
             
             if not demo_plot_df.empty:
                 s_v = demo_plot_df[demo_plot_df['source'] == 'שילוב']['percentage'].values[0] if not demo_plot_df[demo_plot_df['source'] == 'שילוב'].empty else None
-                m_v = demo_plot_df[demo_plot_df['source'] == 'מדרוג']['percentage'].values[0] if not demo_plot_df[demo_plot_df['source'] == 'מדרוג'].empty else None
+                m_v = demo_plot_df[demo_plot_df['source'] == 'מדרו-ג']['percentage'].values[0] if not demo_plot_df[demo_plot_df['source'] == 'מדרוג'].empty else None
                 if s_v is not None and m_v is not None:
                     demo_table_data.append((demo_opt, m_v - s_v))
                     demo_wrapped_labels.append(f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{demo_opt}</span>")
