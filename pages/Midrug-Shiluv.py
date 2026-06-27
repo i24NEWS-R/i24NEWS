@@ -142,7 +142,7 @@ with chart_col:
                         border-collapse: collapse !important;
                         margin-bottom: 25px !important;
                         font-family: inherit !important;
-                        direction: ltr !important; /* דריסת כיווניות ל-LTR */
+                        direction: ltr !important;
                     }
                     .custom-th, .custom-td {
                         border: 1px solid #e5e7eb !important;
@@ -178,7 +178,6 @@ with chart_col:
                         <tr>
                 """
                 
-                # שורה 1: התשובות
                 for ans, _ in table_data:
                     html_code += f'<th class="custom-th">{ans}</th>'
                     
@@ -189,7 +188,6 @@ with chart_col:
                         <tr>
                 """
                 
-                # שורה 2: הפערים
                 for _, diff in table_data:
                     if diff > 0:
                         val_str = f"+{diff:.1f}%"
@@ -213,8 +211,10 @@ with chart_col:
             
             fig = go.Figure()
             
-            wrapped_labels = [f"<span style='display: inline-block; width: 260px; white-space: normal; text-align: right;'>{lbl}</span>" for lbl in labels]
+            # עטיפת התשובות כך שיוכלו לרדת למספר שורות בציר ה-X (רוחב עמודה כ-150 פיקסלים)
+            wrapped_labels = [f"<span style='display: inline-block; width: 150px; white-space: normal; text-align: center;'>{lbl}</span>" for lbl in labels]
             
+            # שרטוט הקווים המחברים (עכשיו אנכיים: x קבוע, y משתנה בין שני הערכים)
             for i, ans in enumerate(labels):
                 s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
                 m_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]
@@ -224,10 +224,11 @@ with chart_col:
                 
                 if s_v is not None and m_v is not None:
                     fig.add_trace(go.Scatter(
-                        x=[m_v, s_v], y=[wrapped_labels[i], wrapped_labels[i]], mode="lines", 
+                        x=[wrapped_labels[i], wrapped_labels[i]], y=[m_v, s_v], mode="lines", 
                         line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"
                     ))
             
+            # הוספת הנקודות והטקסטים (x הוא התשובה, y הוא האחוז)
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
@@ -238,8 +239,8 @@ with chart_col:
                     if val is not None:
                         val = round(val, 1)
                     
-                    x_vals.append(val)
-                    y_vals.append(wrapped_labels[i])
+                    x_vals.append(wrapped_labels[i])
+                    y_vals.append(val)
                     
                     if val is not None:
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
@@ -252,18 +253,19 @@ with chart_col:
                             s_val = round(s_val, 1)
                             m_val = round(m_val, 1)
                             
+                            # אם הערכים זהים - אחד יוצג מעל הנקודה והשני מתחתיה
                             if s_val == m_val:
-                                rand_pos = random.choice(["middle left", "middle right"])
                                 if source_filter == "שילוב":
-                                    txt_pos.append(rand_pos)
+                                    txt_pos.append("top center")
                                 else:
-                                    txt_pos.append("middle right" if rand_pos == "middle left" else "middle left")
+                                    txt_pos.append("bottom center")
+                            # הערך הגבוה מוצג מעל הנקודה, הערך הנמוך מוצג מתחתיה
                             elif val < min(s_val, m_val) or val == min(s_val, m_val):
-                                txt_pos.append("middle left")
+                                txt_pos.append("bottom center")
                             else:
-                                txt_pos.append("middle right")
+                                txt_pos.append("top center")
                         else:
-                            txt_pos.append("middle right")
+                            txt_pos.append("top center")
                     else:
                         hover_vals.append("")
                         txt_vals.append("")
@@ -280,42 +282,42 @@ with chart_col:
             add_points('שילוב', 'סקר שילוב')
             add_points('מדרוג', 'הוועדה למדרוג')
 
-            # --- חישוב דינמי ומדויק של התקרה לפי הערך הגבוה ביותר שמוצג בפועל בגרף ---
+            # --- חישוב דינמי ומדויק של התקרה (ציר Y) ---
             all_plotted_values = []
             for trace in fig.data:
-                if trace.x:
-                    valid_x = [val for val in trace.x if val is not None and val >= 0]
-                    if valid_x:
-                        all_plotted_values.extend(valid_x)
+                if trace.y:
+                    valid_y = [val for val in trace.y if val is not None and val >= 0]
+                    if valid_y:
+                        all_plotted_values.extend(valid_y)
             
             true_max = max(all_plotted_values, default=100)
-            mx = true_max * 1.15  # מרווח ביטחון של 15% מעל לערך הגבוה ביותר
+            my = true_max * 1.15  # מרווח ביטחון של 15% מעל הערך הגבוה ביותר
             # ----------------------------------------------------------------------
             
             fig.update_layout(
-                margin=dict(l=280, r=40, t=60, b=100), 
+                margin=dict(l=60, r=40, t=60, b=150), # מרווח מוגדל למטה להכיל את התשובות היורדות לשורות
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
-                height=max(450, len(labels)*75),
+                height=550,
                 legend=dict(
                     orientation="h", 
-                    y=1.25,
+                    y=-0.3, # הזזת המקרא למטה כדי שלא יסתיר
                     x=0.5, 
                     xanchor="center"
                 ),
                 xaxis=dict(
-                    side="top", 
-                    range=[-10, mx], 
+                    side="bottom", # התשובות מוצגות כעת בתחתית
+                    categoryorder="array", 
+                    categoryarray=wrapped_labels,
+                    tickfont=dict(size=11, weight="bold")
+                ),
+                yaxis=dict(
+                    side="left", # האחוזים עולים כלפי מעלה בצד שמאל
+                    range=[-2, my],
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
                     ticksuffix="%"
-                ),
-                yaxis=dict(
-                    side="left", 
-                    categoryorder="array", 
-                    categoryarray=wrapped_labels[::-1],
-                    tickfont=dict(size=12, weight="bold")
                 )
             )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
