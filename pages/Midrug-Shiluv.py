@@ -258,7 +258,7 @@ if len(available_channels) > 1:
             
             fig_sov = go.Figure()
             
-            for idx, (source_name, source_key) in enumerate([("הוועדה למדרוג", "מדרוג"), ("סקר שילוב", "שילוב")]):
+            for idx, (source_name, source_key) in enumerate([("הוועדה למדרוג", "מדרוג"), ("סקר שילוב", "སקר שילוב")]):
                 source_data = plot_df[plot_df['source'] == source_key]
                 
                 channel_values = []
