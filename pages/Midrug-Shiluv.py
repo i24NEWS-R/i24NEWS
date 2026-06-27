@@ -287,7 +287,7 @@ if len(available_channels) > 1:
                 barmode='stack',
                 height=200,
                 autosize=True,
-                margin=dict(l=20, r=20, t=20, b=50),
+                margin=dict(l=125, r=20, t=20, b=50),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 showlegend=True,
