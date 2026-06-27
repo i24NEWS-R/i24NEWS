@@ -230,7 +230,7 @@ with chart_col:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
 
 # ==============================================================================
-# --- כרטיס תרשים נתח שוק (SOV) מוערם 100% מנוטרל מרעשי רקע ---
+# --- כרטיס תרשים נתח שוק (SOV) מוערם 100% עם קווים מפרידים וטקסט ממורכז ---
 # ==============================================================================
 target_channels = ["ערוץ כאן 11", "ערוץ קשת 12", "ערוץ רשת 13", "ערוץ עכשיו 14", "ערוץ i24news (אפיק 15)"]
 channel_colors = {
@@ -255,18 +255,15 @@ if len(available_channels) > 1:
             for idx, (source_name, source_key) in enumerate([("הוועדה למדרוג", "מדרוג"), ("סקר שילוב", "שילוב")]):
                 source_data = plot_df[plot_df['source'] == source_key]
                 
-                # מציאת הערכים הגולמיים של 5 הערוצים בלבד
                 channel_values = []
                 for channel in available_channels:
                     val = source_data[source_data['answer_text'] == channel]['percentage'].values[0] if not source_data[source_data['answer_text'] == channel].empty else 0
                     channel_values.append(val)
                 
-                # סכימה מחודשת של 5 הערוצים בלבד כדי לקבל את הבסיס (100% האמיתי של העוגה)
                 sum_5_channels = sum(channel_values)
                 
                 if sum_5_channels > 0:
                     for i, channel in enumerate(available_channels):
-                        # חישוב הנתח היחסי מתוך הסכום של 5 הערוצים בלבד
                         normalized_share = (channel_values[i] / sum_5_channels) * 100
                         
                         fig_sov.add_trace(go.Bar(
@@ -276,18 +273,23 @@ if len(available_channels) > 1:
                             y=[source_name],
                             x=[normalized_share],
                             orientation='h',
-                            marker=dict(color=channel_colors.get(channel, "#000")),
+                            # הוספת קו מפריד לבן (stroke) סביב כל מלבן בתרשים
+                            marker=dict(
+                                color=channel_colors.get(channel, "#000"),
+                                line=dict(color='white', width=2)
+                            ),
                             hovertemplate=f"{channel}<br>נתח מתוך הברודקאסט: %{{x:.1f}}%<extra></extra>",
-                            text=f"{normalized_share:.1f}%" if normalized_share > 5 else "", 
+                            # הצגת הערך במרכז הבר (מותנה בכך שהמקטע גדול מ-3.5 אחוז כדי שלא יגלוש)
+                            text=f"{normalized_share:.1f}%" if normalized_share > 3.5 else "", 
                             textposition='inside',
-                            textfont=dict(color="white", weight="bold")
+                            textfont=dict(color="white", weight="bold", size=12)
                         ))
             
             fig_sov.update_layout(
                 barmode='stack',
                 height=200,
                 autosize=True,
-                margin=dict(l=125, r=20, t=20, b=50),
+                margin=dict(l=20, r=20, t=20, b=50),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 showlegend=True,
