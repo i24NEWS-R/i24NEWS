@@ -10,7 +10,7 @@ st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילו
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
-    .stRadio > div {gap:1.5rem;}
+    .stRadio > div {gap:1rem;padding:1rem}
     
     /* דריסת כיווניות עבור אזור התרשים בלבד */
     div[data-testid="stPlotlyChart"] * {
