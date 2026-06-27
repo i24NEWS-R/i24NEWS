@@ -60,14 +60,13 @@ def load_data():
     return pd.read_csv(os.path.join(os.path.dirname(__file__), "Midrug-Shiluv.csv"))
 
 df = load_data()
-st.title("📊 השוואת מדרוג מול סקר שילוב")
 
 # אזור הפילטרים - שימוש בתוויות מובנות ליישור גובה מושלם
 with st.container(border=True):
     title_col, filters_col = st.columns([1.1, 2.7])
     
     with title_col:
-        st.markdown("### 🎯 סינון נתונים")
+        st.markdown("### 📊 השוואת מדרוג מול סקר שילוב")
         
     with filters_col:
         # פריסת הפילטרים כך שיישבו זה לצד זה באותה השורה בצורה מרווחת
