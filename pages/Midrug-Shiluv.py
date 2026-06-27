@@ -226,7 +226,7 @@ with chart_col:
                 ),
                 yaxis=dict(
                     side="left", 
-                    range=[-2, my],
+                    range=[-1, my],
                     showticklabels=False, 
                     showgrid=True,
                     gridcolor="#f3f4f6",
@@ -408,7 +408,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                     ),
                     xaxis=dict(
                         side="top", # אחוזים למעלה
-                        range=[-5, mx_demo],
+                        range=[-1, mx_demo],
                         showgrid=True, 
                         gridcolor="#f3f4f6", 
                         zeroline=False, 
