@@ -74,7 +74,7 @@ available_channels = [c for c in target_channels if c in labels]
 card1_labels = available_channels if len(available_channels) > 1 else labels
 
 with chart_col:
-#########################################
+    #########################################
     # כרטיס ראשון - סקר מול מדרוג: מסגרת
     #########################################
     with st.container(border=True):
@@ -85,32 +85,44 @@ with chart_col:
             st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
             
             table_data = []
-            fig = go.Figure()
-            
             for ans in card1_labels:
-                s_vals = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
-                m_vals = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
-                
-                if len(s_vals) and len(m_vals):
-                    s, m = round(s_vals[0], 1), round(m_vals[0], 1)
-                    table_data.append((ans, m - s))
-                    fig.add_trace(go.Scatter(x=[ans, ans], y=[m, s], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
+                s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
+                m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
+                if len(s_val) and len(m_val):
+                    table_data.append((ans, m_val[0] - s_val[0]))
+
+            fig = go.Figure()
+            wrapped_labels = card1_labels
+            
+            for i, ans in enumerate(card1_labels):
+                s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
+                m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
+                if len(s_val) and len(m_val):
+                    fig.add_trace(go.Scatter(x=[wrapped_labels[i], wrapped_labels[i]], y=[m_val[0], s_val[0]], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
             
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
-                for ans in card1_labels:
+                
+                for i, ans in enumerate(card1_labels):
                     r_s = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
                     r_m = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
                     r_src = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == source_filter)]['percentage'].values
+                    
                     if len(r_s) and len(r_m) and len(r_src):
                         s, m, val = round(r_s[0], 1), round(r_m[0], 1), round(r_src[0], 1)
-                        x_vals.append(ans); y_vals.append(val)
+                        x_vals.append(wrapped_labels[i]); y_vals.append(val)
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
                         txt_vals.append(f"<b>{val}%</b>")
                         txt_pos.append("top center" if s == m else "bottom center" if val <= min(s, m) else "top center")
+                        
                 if x_vals:
-                    fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers+text", name=source_name, marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)), text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"), textposition=txt_pos, hovertemplate=hover_vals))
+                    fig.add_trace(go.Scatter(
+                        x=x_vals, y=y_vals, mode="markers+text", name=source_name,
+                        marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
+                        text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
+                        textposition=txt_pos, hovertemplate=hover_vals
+                    ))
 
             add_points('שילוב', 'סקר שילוב')
             add_points('מדרוג', 'הוועדה למדרוג')
@@ -119,32 +131,10 @@ with chart_col:
             my = max(all_vals, default=100) * 1.15
             
             fig.update_layout(
-                margin=dict(l=50, r=50, t=20, b=50), # הגדלנו שוליים תחתונים לכותרת
-                paper_bgcolor='rgba(0,0,0,0)', 
-                plot_bgcolor='rgba(0,0,0,0)',
-                height=400, # הגדלנו מעט את הגובה כדי שיהיה מקום לכותרות
-                legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", yanchor="top"),
-                
-                # הגדרת ציר X (תחתון)
-                xaxis=dict(
-                    title="<b>תשובה / ערוץ</b>", 
-                    side="bottom", 
-                    showticklabels=True, # החזרנו תוויות כדי שהכותרת תהיה ברורה
-                    showgrid=False, 
-                    zeroline=False
-                ),
-                
-                # הגדרת ציר Y (שמאלי)
-                yaxis=dict(
-                    title="<b>אחוזי צפייה / הסכמה</b>",
-                    side="left", 
-                    range=[-1, my], 
-                    showticklabels=True, # החזרנו מספרים בצד שמאל
-                    showgrid=True, 
-                    gridcolor="#f3f4f6", 
-                    zeroline=False,
-                    ticksuffix="%" # הוספת סימן אחוז למספרים בצד
-                )
+                margin=dict(l=200, r=50, t=0, b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                height=380, legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", yanchor="top"),
+                xaxis=dict(side="bottom", showticklabels=False, showgrid=False, zeroline=False),
+                yaxis=dict(side="left", range=[-1, my], showticklabels=False, showgrid=True, gridcolor="#f3f4f6", zeroline=False)
             )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             
@@ -152,22 +142,31 @@ with chart_col:
             # כרטיס ראשון - סקר מול מדרוג: טבלה
             #########################################
             if table_data:
+                col_count = len(table_data) + 1 
                 all_diffs = [diff for _, diff in table_data]
                 mean_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
-                html_code = f'<table class="custom-table"><thead><tr><th class="custom-th">פרמטר</th>' 
-                for ans, _ in table_data: html_code += f'<th class="custom-th">{ans}</th>'
-                html_code += "</tr></thead><tbody><tr>"
+                
+                html_code = f'<table class="custom-table"><thead><tr>'
+                html_code += f'<th class="custom-th">פרמטר</th>' 
+                for ans, _ in table_data: 
+                    html_code += f'<th class="custom-th">{ans}</th>'
+                html_code += "</tr></thead><tbody>"
+                
+                html_code += "<tr>"
                 html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי אבסולוטי</td>'
                 for _, diff in table_data:
                     cls = "pos-val" if diff > 0 else "neg-val" if diff < 0 else "zero-val"
                     html_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
-                html_code += "</tr><tr>"
+                html_code += "</tr>"
+                
+                html_code += "<tr>"
                 html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי מחושב</td>'
                 for _, diff in table_data:
                     adj_diff = diff - mean_diff
                     cls = "pos-val" if adj_diff > 0 else "neg-val" if adj_diff < 0 else "zero-val"
                     html_code += f'<td class="custom-td {cls}">{"+" if adj_diff > 0 else ""}{adj_diff:.1f}%</td>'
                 html_code += "</tr></tbody></table>"
+                
                 st.markdown(html_code, unsafe_allow_html=True)
         else:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
