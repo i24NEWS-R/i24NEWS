@@ -111,14 +111,14 @@ labels = plot_df['answer_text'].drop_duplicates().tolist()
 with chart_col:
     with st.container(border=True):
         if labels:
-            # מראה מיקום בטקסט קטן ובולד מעל התשובה שמעל התרשים
+            # מראה מיקום בטקסט קטן ובולד בראש הקונטיינר
             demo_display = sel_d if 'sel_d' in locals() and sel_w == "חיבור שני הגלים" else "כללי"
             st.markdown(f"<p style='font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:4px;'>{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; {demo_display}</p>", unsafe_allow_html=True)
             
             st.markdown(f"### {sel_q}")
             st.write("")
             
-            # --- בניית נתוני הטבלה ---
+            # --- הכנת נתוני הטבלה (לשימוש בהמשך מתחת לתרשים) ---
             table_data = []
             for ans in labels:
                 s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
@@ -130,92 +130,11 @@ with chart_col:
                 if s_v is not None and m_v is not None:
                     diff = m_v - s_v
                     table_data.append((ans, diff))
-            
-            # --- הזרקת טבלת HTML מעוצבת, ממורכזת, LTR ועמודות ברוחב שווה ---
-            if table_data:
-                st.markdown("##### עד כמה הנתונים נמוכים/גבוהים ביחס למדרוג")
-                
-                col_count = len(table_data)
-                
-                html_code = f"""
-                <style>
-                    .custom-table {{
-                        width: 100% !important;
-                        border-collapse: collapse !important;
-                        margin-bottom: 25px !important;
-                        font-family: inherit !important;
-                        direction: ltr !important;
-                    }}
-                    .custom-th, .custom-td {{
-                        border: 1px solid #e5e7eb !important;
-                        padding: 12px 8px !important;
-                        text-align: center !important;
-                        vertical-align: middle !important;
-                        direction: ltr !important;
-                        width: calc(100% / {col_count}) !important; /* רוחב שווה לכל העמודות */
-                        box-sizing: border-box !important;
-                    }}
-                    .custom-th {{
-                        background-color: #f3f4f6 !important;
-                        font-weight: bold !important;
-                        color: #1f2937 !important;
-                        font-size: 14px !important;
-                    }}
-                    .pos-val {{
-                        color: green !important;
-                        font-weight: bold !important;
-                        font-size: 14px !important;
-                    }}
-                    .neg-val {{
-                        color: red !important;
-                        font-weight: bold !important;
-                        font-size: 14px !important;
-                    }}
-                    .zero-val {{
-                        color: #374151 !important;
-                        font-weight: bold !important;
-                        font-size: 14px !important;
-                    }}
-                </style>
-                <table class="custom-table">
-                    <thead>
-                        <tr>
-                """
-                
-                for ans, _ in table_data:
-                    html_code += f'<th class="custom-th">{ans}</th>'
-                    
-                html_code += """
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                """
-                
-                for _, diff in table_data:
-                    if diff > 0:
-                        val_str = f"+{diff:.1f}%"
-                        html_code += f'<td class="custom-td pos-val">{val_str}</td>'
-                    elif diff < 0:
-                        val_str = f"{diff:.1f}%"
-                        html_code += f'<td class="custom-td neg-val">{val_str}</td>'
-                    else:
-                        val_str = f"{diff:.1f}%"
-                        html_code += f'<td class="custom-td zero-val">{val_str}</td>'
-                        
-                html_code += """
-                        </tr>
-                    </tbody>
-                </table>
-                """
-                
-                st.markdown(html_code, unsafe_allow_html=True)
-                st.write("")
-            # --------------------------------------------------------
-            
+
+            # --- בניית התרשים האנכי ---
             fig = go.Figure()
             
-            # עטיפת התשובות כך שיוכלו לרדת למספר שורות בציר ה-X (רוחב עמודה כ-150 פיקסלים)
+            # עטיפת התשובות כך שיוכלו לרדת למספר שורות בציר ה-X
             wrapped_labels = [f"<span style='display: inline-block; width: 150px; white-space: normal; text-align: center;'>{lbl}</span>" for lbl in labels]
             
             # שרטוט הקווים המחברים (אנכיים) רק לתשובות שקיימות בשני המקורות
@@ -232,7 +151,6 @@ with chart_col:
                         line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"
                     ))
             
-            # הוספת הנקודות והטקסטים רק לתשובות שקיימות בשני המקורות
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
@@ -278,7 +196,7 @@ with chart_col:
             add_points('שילוב', 'סקר שילוב')
             add_points('מדרוג', 'הוועדה למדרוג')
 
-            # --- חישוב דינמי ומדויק של התקרה (ציר Y) ---
+            # חישוב דינמי של התקרה
             all_plotted_values = []
             for trace in fig.data:
                 if trace.y:
@@ -287,19 +205,19 @@ with chart_col:
                         all_plotted_values.extend(valid_y)
             
             true_max = max(all_plotted_values, default=100)
-            my = true_max * 1.15  # מרווח ביטחון של 15% מעל הערך הגבוה ביותר
-            # ----------------------------------------------------------------------
+            my = true_max * 1.15
             
             fig.update_layout(
-                margin=dict(l=60, r=40, t=60, b=150), 
+                margin=dict(l=60, r=40, t=80, b=150), 
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
                 height=550,
                 legend=dict(
                     orientation="h", 
-                    y=-0.3, 
+                    y=1.1, # מקראה למעלה, צמודה לתרשים
                     x=0.5, 
-                    xanchor="center"
+                    xanchor="center",
+                    yanchor="bottom"
                 ),
                 xaxis=dict(
                     side="bottom", 
@@ -316,6 +234,74 @@ with chart_col:
                     ticksuffix="%"
                 )
             )
+            
+            # הצגת התרשים
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+            # --- הזרקת טבלת HTML (עברה לסוף, מתחת לתרשים) ---
+            if table_data:
+                col_count = len(table_data)
+                
+                html_code = f"""
+                <style>
+                    .custom-table {{
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        margin-top: 10px !important;
+                        margin-bottom: 25px !important;
+                        font-family: inherit !important;
+                        direction: ltr !important;
+                    }}
+                    .custom-th, .custom-td {{
+                        border: 1px solid #e5e7eb !important;
+                        padding: 12px 8px !important;
+                        text-align: center !important;
+                        vertical-align: middle !important;
+                        direction: ltr !important;
+                        width: calc(100% / {col_count}) !important;
+                        box-sizing: border-box !important;
+                    }}
+                    .custom-th {{
+                        background-color: #f3f4f6 !important;
+                        font-weight: bold !important;
+                        color: #1f2937 !important;
+                        font-size: 14px !important;
+                    }}
+                    .pos-val {{
+                        color: green !important;
+                        font-weight: bold !important;
+                    }}
+                    .neg-val {{
+                        color: red !important;
+                        font-weight: bold !important;
+                    }}
+                    .zero-val {{
+                        color: #374151 !important;
+                        font-weight: bold !important;
+                    }}
+                </style>
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                """
+                for ans, _ in table_data:
+                    html_code += f'<th class="custom-th">{ans}</th>'
+                html_code += "</tr></thead><tbody><tr>"
+                
+                for _, diff in table_data:
+                    if diff > 0:
+                        val_str = f"+{diff:.1f}%"
+                        html_code += f'<td class="custom-td pos-val">{val_str}</td>'
+                    elif diff < 0:
+                        val_str = f"{diff:.1f}%"
+                        html_code += f'<td class="custom-td neg-val">{val_str}</td>'
+                    else:
+                        val_str = f"{diff:.1f}%"
+                        html_code += f'<td class="custom-td zero-val">{val_str}</td>'
+                        
+                html_code += "</tr></tbody></table>"
+                
+                st.markdown(html_code, unsafe_allow_html=True)
+
         else:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
