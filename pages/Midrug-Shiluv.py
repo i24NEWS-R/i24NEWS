@@ -34,7 +34,7 @@ menu_col, chart_col = st.columns([1, 5], gap="small")
 
 with menu_col:
     with st.container(border=True):
-        st.markdown("### 📺 בחירת שאלה")
+        st.markdown("### 📺 סינון נתונים")
         st.write("")
         sel_p = st.selectbox("ימי מדידה", ["אמצע שבוע", "סוף שבוע"])
         waves = ["גל 19 במאי", "גל 25 במאי", "ממוצע שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "ממוצע שני הגלים"]
