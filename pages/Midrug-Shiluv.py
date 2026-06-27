@@ -64,7 +64,7 @@ menu_col, chart_col = st.columns([1.3, 2.5], gap="large")
 with menu_col:
     with st.container(border=True):
         st.markdown("### 📋 בחר שאלה לניתוח:")
-        sel_q = st.radio("", q_list, label_visibility="collapsed")
+        sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
 
 plot_df = df_f[df_f['question_text'] == sel_q]
 labels = plot_df['answer_text'].drop_duplicates().tolist()
@@ -113,8 +113,8 @@ with chart_col:
                         if s_val == -1 or m_val == -1:
                             txt_pos.append("middle right" if is_shiluv_source else "middle left")
                         else:
-                            # מרווח לערך הקרוב לאפס כדי למנוע היעלמות/חיתוך
-                            if val == min(s_val, m_val) and val < 5:
+                            # מרווח דינמי כשקרוב לאפס
+                            if val == min(s_val, m_val) and val < 10:
                                 txt_pos.append("middle right") 
                             elif val == min(s_val, m_val):
                                 txt_pos.append("middle left")
@@ -139,19 +139,20 @@ with chart_col:
             mx = max(v_all, default=100)
             
             fig.update_layout(
-                margin=dict(l=280, r=40, t=60, b=100), # מרווח עליון מוגדל עבור המקרא
+                margin=dict(l=280, r=40, t=60, b=100), 
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
                 height=max(450, len(labels)*100),
                 legend=dict(
                     orientation="h", 
-                    y=1.15, # מקרא ממוקם מעל התרשים בצורה מרווחת
+                    y=1.15, # מקרא מעל התרשים
                     x=0.5, 
                     xanchor="center"
                 ),
                 xaxis=dict(
                     side="top", 
-                    range=[0, mx * 1.3], 
+                    # מאפשר לציר ה-X להתחיל בערך שלילי קטן (כדי שלייבלים לא ייחתכו באפס) ומקסימום מרווח
+                    range=[-(mx * 0.1), mx * 1.3], 
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
