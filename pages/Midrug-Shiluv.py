@@ -9,6 +9,7 @@ st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילו
 st.markdown("""
 <style>
     * { direction: rtl!important; text-align: right!important; }
+    h3 {margin-bottom:15px!important;}
     .stRadio label div[data-testid="stMarkdownContainer"] p { font-size: 15px !important; }
     .stRadio label { padding: 15px 0 !important; border-bottom: 1px solid #f3f4f6; display: flex !important; align-items: center !important; flex-direction: row !important; justify-content: flex-start !important; }
     .stRadio label input[type="radio"] { margin-left: 0 !important; margin-right: 5px !important; }
@@ -30,7 +31,7 @@ def load_data():
 
 df = load_data()
 
-menu_col, chart_col = st.columns([1, 5], gap="large")
+menu_col, chart_col = st.columns([1, 5], gap="small")
 
 with menu_col:
     #########################################
@@ -38,7 +39,6 @@ with menu_col:
     #########################################
     with st.container(border=True):
         st.markdown("### 📺 סינון נתונים")
-        st.write("")
         sel_p = st.selectbox("ימי מדידה", ["אמצע שבוע", "סוף שבוע"])
         waves = ["גל 19 במאי", "גל 25 במאי", "ממוצע שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "ממוצע שני הגלים"]
         sel_w = st.selectbox("גל מחקר", waves, index=2)
