@@ -8,7 +8,7 @@ st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילו
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
-    .stRadio > div {gap: 1.5rem; padding:5px;}
+    .stRadio > div {gap:1.5rem;}
 </style>
 """, unsafe_allow_html=True)
 
