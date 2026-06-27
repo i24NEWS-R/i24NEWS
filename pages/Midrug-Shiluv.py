@@ -17,37 +17,24 @@ st.markdown("""
         border-bottom: 1px solid #f3f4f6;
         display: flex !important;
         align-items: center !important;
-        flex-direction: row !important;
+        flex-direction: row !important; /* כפתור הרדיו מימין, הטקסט משמאלו */
         justify-content: flex-start !important;
     }
     
+    /* ריווח כפתור הבחירה העגול והרחקתו שמאלה מהטקסט שצמוד אליו */
     .stRadio label input[type="radio"] {
         margin-left: 0 !important;
         margin-right: 5px !important;
     }
     
+    /* הוספת מרווח מפורש בין כפתור הרדיו לבין הטקסט בלייבל */
     .stRadio label div[data-testid="stMarkdownContainer"] {
         margin-right: 15px !important;
     }
     
+    /* הרחקת כותרת/נוסח השאלה מכפתור הבחירה הראשון ברשימה */
     div.row-widget.stRadio > div > label:first-of-type {
         margin-bottom: 10px;
-    }
-
-    /* תיקון גורף לקוביות הפילטרים - מאלץ את התווית והתיבה הנפתחת לשבת בדיוק באותו גובה אמצע (Middle) */
-    div[data-testid="column"] > div.stSelectbox, 
-    div[data-testid="column"] > p,
-    div[data-testid="column"] > div > p {
-        margin-bottom: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-
-    /* תצוגה כללית לעמודות הסינון ליישור מושלם */
-    div[data-testid="column"] {
-        display: flex !important;
-        align-items: center !important;
-        min-height: 45px; /* גובה מינימלי תואם לתיבות */
     }
 
     /* דריסת כיווניות עבור אזור התרשים בלבד למניעת בריחת טקסטים */
@@ -70,32 +57,32 @@ def load_data():
 df = load_data()
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
-# אזור הפילטרים - חלוקה מדויקת המקצה עמודה לכותרת, ועמודה נפרדת לפילטרים
+# אזור הפילטרים - שימוש בתוויות מובנות ליישור גובה מושלם
 with st.container(border=True):
     title_col, filters_col = st.columns([1.1, 2.7])
     
     with title_col:
         st.markdown("### 🎯 סינון נתונים")
         
-with filters_col:
-    f1, f2, f3, f4, f5, f6 = st.columns([1.2, 2.8, 1.2, 2.8, 1.5, 3.5])
-    
-    # שימוש ב-markdown עם הקלאס הגורף במקום שורות כתיבה כפולות
-    f1.markdown('<div class="filter-label-wrapper">ימי מדידה:</div>', unsafe_allow_html=True)
-    sel_p = f2.selectbox("", ["אמצע שבוע", "סוף שבוע"], label_visibility="collapsed")
-    
-    f3.markdown('<div class="filter-label-wrapper">גל מחקר:</div>', unsafe_allow_html=True)
-    waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
-    sel_w = f4.selectbox("", waves, index=2, label_visibility="collapsed")
-    
-    f5.markdown('<div class="filter-label-wrapper">פילוח דמוגרפי:</div>', unsafe_allow_html=True)
-    if sel_w == "חיבור שני הגלים":
-        opts = df[df['wave'] == "חיבור שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
-        sel_d = f6.selectbox("", opts, index=list(opts).index("כללי") if "כללי" in opts else 0, label_visibility="collapsed")
-        cat, val = ("כללי", "סהכ") if sel_d == "כללי" else sel_d.split(" - ", 1)
-    else:
-        f6.selectbox("", ["כללי (זמין בחיבור הגלים)"], disabled=True, label_visibility="collapsed")
-        cat, val = "כללי", "סהכ"
+    with filters_col:
+        # פריסת הפילטרים כך שיישבו זה לצד זה באותה השורה בצורה מרווחת
+        f1, f2, f3 = st.columns([1, 1, 1.2])
+        
+        with f1:
+            sel_p = st.selectbox("ימי מדידה:", ["אמצע שבוע", "סוף שבוע"])
+            
+        with f2:
+            waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
+            sel_w = st.selectbox("גל מחקר:", waves, index=2)
+            
+        with f3:
+            if sel_w == "חיבור שני הגלים":
+                opts = df[df['wave'] == "חיבור שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
+                sel_d = st.selectbox("פילוח דמוגרפי:", opts, index=list(opts).index("כללי") if "כללי" in opts else 0)
+                cat, val = ("כללי", "סהכ") if sel_d == "כללי" else sel_d.split(" - ", 1)
+            else:
+                st.selectbox("פילוח דמוגרפי:", ["כללי (זמין בחיבור הגלים)"], disabled=True)
+                cat, val = "כללי", "סהכ"
 
 df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
 
