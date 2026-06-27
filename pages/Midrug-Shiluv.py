@@ -233,51 +233,62 @@ with chart_col:
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
                 for i, ans in enumerate(labels):
+                s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
+                m_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]
+                
+                s_v = s_row['percentage'].values[0] if not s_row.empty else None
+                m_v = m_row['percentage'].values[0] if not m_row.empty else None
+                
+                # מציגים קו רק אם יש נתון מקביל בשני המקורות
+                if s_v is not None and m_v is not None:
+                    fig.add_trace(go.Scatter(
+                        x=[wrapped_labels[i], wrapped_labels[i]], y=[m_v, s_v], mode="lines", 
+                        line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"
+                    ))
+            
+            # הוספת הנקודות והטקסטים רק לתשובות הקיימות בשני המקורות
+            def add_points(source_filter, source_name):
+                x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
+                
+                for i, ans in enumerate(labels):
                     row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == source_filter)]
                     val = row['percentage'].values[0] if not row.empty else None
                     
-                    if val is not None:
-                        val = round(val, 1)
+                    s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else None
+                    m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else None
                     
-                    x_vals.append(wrapped_labels[i])
-                    y_vals.append(val)
-                    
-                    if val is not None:
+                    # מוסיפים לתרשים רק תשובות שיש להן נתון מקביל בשני המקורות
+                    if s_val is not None and m_val is not None:
+                        if val is not None:
+                            val = round(val, 1)
+                        
+                        x_vals.append(wrapped_labels[i])
+                        y_vals.append(val)
+                        
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
                         txt_vals.append(f"<b>{val}%</b>")
                         
-                        s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else None
-                        m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else None
+                        s_val = round(s_val, 1)
+                        m_val = round(m_val, 1)
                         
-                        if s_val is not None and m_val is not None:
-                            s_val = round(s_val, 1)
-                            m_val = round(m_val, 1)
-                            
-                            # אם הערכים זהים - אחד יוצג מעל הנקודה והשני מתחתיה
-                            if s_val == m_val:
-                                if source_filter == "שילוב":
-                                    txt_pos.append("top center")
-                                else:
-                                    txt_pos.append("bottom center")
-                            # הערך הגבוה מוצג מעל הנקודה, הערך הנמוך מוצג מתחתיה
-                            elif val < min(s_val, m_val) or val == min(s_val, m_val):
-                                txt_pos.append("bottom center")
-                            else:
+                        if s_val == m_val:
+                            if source_filter == "שילוב":
                                 txt_pos.append("top center")
+                            else:
+                                txt_pos.append("bottom center")
+                        elif val < min(s_val, m_val) or val == min(s_val, m_val):
+                            txt_pos.append("bottom center")
                         else:
                             txt_pos.append("top center")
-                    else:
-                        hover_vals.append("")
-                        txt_vals.append("")
-                        txt_pos.append("middle center")
                         
                 color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
-                fig.add_trace(go.Scatter(
-                    x=x_vals, y=y_vals, mode="markers+text", name=source_name,
-                    marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
-                    text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
-                    textposition=txt_pos, hovertemplate=hover_vals
-                ))
+                if x_vals: # מונע הוספת עקומות ריקות אם אין התאמות
+                    fig.add_trace(go.Scatter(
+                        x=x_vals, y=y_vals, mode="markers+text", name=source_name,
+                        marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
+                        text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
+                        textposition=txt_pos, hovertemplate=hover_vals
+                    ))
 
             add_points('שילוב', 'סקר שילוב')
             add_points('מדרוג', 'הוועדה למדרוג')
