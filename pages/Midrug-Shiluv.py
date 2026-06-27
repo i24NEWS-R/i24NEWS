@@ -60,7 +60,7 @@ menu_col, chart_col = st.columns([1.3, 2.5], gap="large")
 with menu_col:
     with st.container(border=True):
         st.markdown("### 📋 בחר שאלה לניתוח:")
-        sel_q = st.radio("", q_list, label_visibility="collapsed")
+        sel_q = st.radio("", q_list)
 
 plot_df = df_f[df_f['question_text'] == sel_q]
 labels = plot_df['answer_text'].drop_duplicates().tolist()
