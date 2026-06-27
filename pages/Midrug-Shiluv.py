@@ -73,7 +73,6 @@ with chart_col:
     with st.container(border=True):
         if labels:
             st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
-            st.write("")
             
             table_data = []
             for ans in labels:
@@ -170,13 +169,11 @@ with chart_col:
     available_channels = [c for c in target_channels if c in labels]
 
     if len(available_channels) > 1:
-        st.write("")
         #########################################
         # כרטיס שני - נתח שוק: תרשים
         #########################################
         with st.container(border=True):
             st.markdown("### 📊 נתח שוק יחסי מתוך ערוצי הברודקאסט")
-            st.write("")
             fig_sov = go.Figure()
             
             for idx, (s_name, s_key) in enumerate([("הוועדה למדרוג", "מדרוג"), ("סקר שילוב", "שילוב")]):
@@ -242,14 +239,12 @@ with chart_col:
 
     has_i24 = any("i24" in ans for ans in labels)
     if sel_w == "ממוצע שני הגלים" and has_i24:
-        st.write("") 
         #########################################
         # כרטיס שלישי - פירוט i24 (תרשים בלבד)
         #########################################
         with st.container(border=True):
             i24_ans = next((ans for ans in labels if "i24" in ans), None)
             st.markdown(f"### 👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news")
-            st.write("")
             
             d_table, d_wrap, d_s_vals, d_m_vals = [], [], [], []
             all_demo = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
