@@ -55,7 +55,7 @@ with menu_col:
         st.stop()
 
     with st.container(border=True):
-        st.markdown("### 📋 בחירת שאלה:")
+        st.markdown("### 📋 בחירת שאלה")
         st.write("")
         sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
 
