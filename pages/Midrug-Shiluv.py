@@ -188,7 +188,7 @@ with chart_col:
             fig_sov.update_layout(
                 barmode='stack', height=200, autosize=True, bargap=0.25, margin=dict(l=125, r=20, t=0, b=0),
                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
-                legend=dict(orientation="h", y=-0, x=0.5, xanchor="center", font=dict(size=11)),
+                legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", font=dict(size=11)),
                 xaxis=dict(showticklabels=False, showgrid=False, range=[0, 100]),
                 yaxis=dict(tickfont=dict(weight="bold", size=14))
             )
