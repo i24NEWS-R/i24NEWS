@@ -131,47 +131,51 @@ with chart_col:
                     diff = m_v - s_v
                     table_data.append((ans, diff))
             
-            # --- הזרקת טבלת HTML מעוצבת, ממורכזת ובכיווניות LTR ---
+            # --- הזרקת טבלת HTML מעוצבת, ממורכזת, LTR ועמודות ברוחב שווה ---
             if table_data:
                 st.markdown("##### עד כמה הנתונים נמוכים/גבוהים ביחס למדרוג")
                 
-                html_code = """
+                col_count = len(table_data)
+                
+                html_code = f"""
                 <style>
-                    .custom-table {
+                    .custom-table {{
                         width: 100% !important;
                         border-collapse: collapse !important;
                         margin-bottom: 25px !important;
                         font-family: inherit !important;
                         direction: ltr !important;
-                    }
-                    .custom-th, .custom-td {
+                    }}
+                    .custom-th, .custom-td {{
                         border: 1px solid #e5e7eb !important;
                         padding: 12px 8px !important;
                         text-align: center !important;
                         vertical-align: middle !important;
                         direction: ltr !important;
-                    }
-                    .custom-th {
+                        width: calc(100% / {col_count}) !important; /* רוחב שווה לכל העמודות */
+                        box-sizing: border-box !important;
+                    }}
+                    .custom-th {{
                         background-color: #f3f4f6 !important;
                         font-weight: bold !important;
                         color: #1f2937 !important;
                         font-size: 14px !important;
-                    }
-                    .pos-val {
+                    }}
+                    .pos-val {{
                         color: green !important;
                         font-weight: bold !important;
                         font-size: 14px !important;
-                    }
-                    .neg-val {
+                    }}
+                    .neg-val {{
                         color: red !important;
                         font-weight: bold !important;
                         font-size: 14px !important;
-                    }
-                    .zero-val {
+                    }}
+                    .zero-val {{
                         color: #374151 !important;
                         font-weight: bold !important;
                         font-size: 14px !important;
-                    }
+                    }}
                 </style>
                 <table class="custom-table">
                     <thead>
