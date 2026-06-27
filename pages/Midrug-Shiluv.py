@@ -64,7 +64,7 @@ menu_col, chart_col = st.columns([1.3, 2.5], gap="large")
 
 with menu_col:
     with st.container(border=True):
-        st.markdown("### 📋 בחר שאלה לניתוח:")
+        st.markdown("### 📋 בחירת שאלה:")
         sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
 
 plot_df = df_f[df_f['question_text'] == sel_q]
@@ -73,6 +73,10 @@ labels = plot_df['answer_text'].drop_duplicates().tolist()
 with chart_col:
     with st.container(border=True):
         if labels:
+            # הצגת השאלה הנבחרה מעל התרשים באותו הגודל של הכותרות
+            st.markdown(f"### {sel_q}")
+            st.write("")
+            
             fig = go.Figure()
             
             # עטיפה להצגת טקסט ארוך במרווח מימין לתרשים (ללא חיתוך)
@@ -92,7 +96,7 @@ with chart_col:
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False, hoverinfo="skip"
                     ))
             
-            # הוספת הנקודות והטקסטים עם עיגול לספרה אחת ויישום הכללים המדויקים
+            # הוספת הנקודות והטקסטים עם עיגול לספרה עשרונית אחת ויישום הכללים
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
@@ -118,12 +122,11 @@ with chart_col:
                             m_val = round(m_val, 1)
                             
                             if s_val == m_val:
-                                # ערכים תואמים לחלוטין -> בחירה אקראית של מיקום (שמאל או ימין)
+                                # ערכים תואמים לחלוטין -> בחירה אקראית של מיקום (שמאל או ימין) כדי למנוע חפיפה
                                 rand_pos = random.choice(["middle left", "middle right"])
                                 if source_filter == "שילוב":
                                     txt_pos.append(rand_pos)
                                 else:
-                                    # המקור השני יקבל את הצד ההפוך
                                     txt_pos.append("middle right" if rand_pos == "middle left" else "middle left")
                             # שני נתונים שונים -> הנמוך משמאל לבולט, הגבוה מימין לבולט
                             elif val < min(s_val, m_val) or val == min(s_val, m_val):
@@ -138,7 +141,6 @@ with chart_col:
                         txt_vals.append("")
                         txt_pos.append("middle center")
                         
-                # צבע מותאם לכל מקור
                 color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
                 fig.add_trace(go.Scatter(
                     x=x_vals, y=y_vals, mode="markers+text", name=source_name,
@@ -166,7 +168,7 @@ with chart_col:
                 ),
                 xaxis=dict(
                     side="top", 
-                    range=[-10, mx * 1.3], # מתחיל ממינוס 10 לתת מרווח לקצה האפס
+                    range=[-10, mx * 1.3], # מתחיל ממינוס 10 לתת מרווח גם כשהערך קרוב לאפס
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
