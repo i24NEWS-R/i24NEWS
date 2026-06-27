@@ -36,9 +36,9 @@ with menu_col:
     with st.container(border=True):
         st.markdown("### 📺 פרוייקט בדיקת הרייטינג")
         st.write("")
-        sel_p = st.selectbox("ימי מדידה:", ["אמצע שבוע", "סוף שבוע"])
+        sel_p = st.selectbox("ימי מדידה", ["אמצע שבוע", "סוף שבוע"])
         waves = ["גל 19 במאי", "גל 25 במאי", "ממוצע שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "ממוצע שני הגלים"]
-        sel_w = st.selectbox("גל מחקר:", waves, index=2)
+        sel_w = st.selectbox("גל מחקר", waves, index=2)
         
         if sel_w == "ממוצע שני הגלים":
             opts = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
