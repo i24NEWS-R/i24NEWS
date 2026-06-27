@@ -59,14 +59,14 @@ st.title("📊 השוואת מדרוג מול סקר שילוב")
 
 # אזור הפילטרים - חלוקה מדויקת המקצה עמודה לכותרת, ועמודה נפרדת לפילטרים
 with st.container(border=True):
-    title_col, filters_col = st.columns([1.1, 3.6])
+    title_col, filters_col = st.columns([1.1, 5])
     
     with title_col:
         st.markdown("### 🎯 סינון נתונים")
         
     with filters_col:
         # פריסת הפילטרים כך שיישבו זה לצד זה באותה השורה בצורה מרווחת
-        f1, f2, f3, f4, f5, f6 = st.columns([1.5, 2.8, 1.2, 2.8, 1.5, 3.5])
+        f1, f2, f3, f4, f5, f6 = st.columns([1.2, 2.8, 1.2, 2.8, 1.5, 3.5])
         
         f1.write("")
         f1.write("ימי מדידה:")
