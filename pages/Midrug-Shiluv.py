@@ -274,10 +274,10 @@ with chart_col:
             
             fig_sov.update_layout(
                 barmode='stack',
-                height=300,
+                height=350,
                 autosize=True,
                 bargap=0.5,
-                margin=dict(l=125, r=20, t=20, b=0),
+                margin=dict(l=125, r=20, t=0, b=0),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 showlegend=True,
