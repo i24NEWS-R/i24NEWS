@@ -2,11 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import os
+import math
 
-# 1. הגדרת עמוד
+# ==========================================
+# 1. הגדרת עמוד והזרקת עיצוב פרימיום
+# ==========================================
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# 2. הזרקת CSS - הפעם העיצוב מכוון בדיוק לכרטיסיות ולתפריטים הפנימיים
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;800&display=swap');
@@ -21,7 +23,6 @@ st.markdown("""
             background-color: #f0f2f6 !important;
         }
         
-        /* עיצוב כרטיסיות מובנות של Streamlit (containers) */
         div[data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #ffffff !important;
             padding: 20px 25px !important;
@@ -30,7 +31,6 @@ st.markdown("""
             border: 1px solid #e2e8f0 !important;
         }
         
-        /* כותרת ראשית */
         h2 {
             color: #0f172a !important;
             font-weight: 800 !important;
@@ -38,7 +38,6 @@ st.markdown("""
             padding-right: 15px;
         }
         
-        /* מניעת עיצוב כפול בטורים עצמם */
         div[data-testid="column"] {
             background-color: transparent !important;
             padding: 0 !important;
@@ -46,21 +45,10 @@ st.markdown("""
             box-shadow: none !important;
         }
         
-        /* יישור קשיח של תיבות Selectbox ותפריטים נפתחים */
-        div[data-baseweb="select"], div[data-baseweb="select"] > div {
-            direction: rtl !important;
-        }
-        div[data-baseweb="popover"], ul[role="listbox"] {
-            direction: rtl !important;
-            text-align: right !important;
-        }
-        ul[role="listbox"] li {
-            text-align: right !important;
-            direction: rtl !important;
-            padding-right: 15px !important;
-        }
+        div[data-baseweb="select"], div[data-baseweb="select"] > div { direction: rtl !important; }
+        div[data-baseweb="popover"], ul[role="listbox"] { direction: rtl !important; text-align: right !important; }
+        ul[role="listbox"] li { text-align: right !important; direction: rtl !important; padding-right: 15px !important; }
         
-        /* עיצוב רשימת שאלות שתרגיש כמו תפריט בחירה רציף */
         div[data-testid="stRadio"] label {
             padding: 10px 15px !important;
             border-radius: 8px !important;
@@ -75,91 +63,108 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. טעינת הנתונים
-try:
-    path = os.path.join(os.path.dirname(__file__), "השוואות.xlsx")
-    df_m = pd.read_excel(path, sheet_name="מדרוג", header=None)
-    df_s = pd.read_excel(path, sheet_name="שילוב", header=None)
-except Exception as e:
-    st.error(f"שגיאה בטעינת הקובץ: {e}")
-    st.stop()
+# ==========================================
+# 2. טעינת נתונים חכמה (עם Caching לביצועים)
+# ==========================================
+@st.cache_data
+def load_data():
+    try:
+        path = os.path.join(os.path.dirname(__file__), "Midrug-Shiluv.csv")
+        return pd.read_csv(path)
+    except FileNotFoundError:
+        st.error(f"שגיאה: הקובץ Midrug-Shiluv.csv לא נמצא. ודא שהוא ממוקם בתיקייה הנכונה.")
+        st.stop()
 
-questions = {str(r[0]): i for i, r in df_s.iterrows() if "q" in str(r[0]).lower() or ":" in str(r[0])}
-
-if not questions:
-    st.error("לא נמצאו שאלות תקינות בקובץ.")
-    st.stop()
-
-cats = [str(x).strip() if pd.notna(x) else "" for x in df_s.iloc[0]]
-for i in range(1, len(cats)): 
-    if not cats[i]: cats[i] = cats[i-1]
-
-demo = {"כללי": 3}
-for idx in range(4, df_s.shape[1]):
-    sub = df_s.iloc[1, idx]
-    if pd.notna(sub): demo[f"{cats[idx]} - {str(sub).strip()}"] = idx
+df = load_data()
 
 st.markdown("<h2>📊 השוואת מדרוג מול סקר שילוב</h2>", unsafe_allow_html=True)
 
-# =====================================================================
-# 4. כרטיסיית הפילטרים - שימוש ב-3 טורים כדי למנוע מתיחה!
-# =====================================================================
+# ==========================================
+# 3. פילטרים דינמיים (נבנים אוטומטית מהדאטה)
+# ==========================================
 with st.container(border=True):
     st.markdown("<p style='font-weight: 700; color: #1e293b; margin-bottom: 5px;'>🎯 סינון נתונים</p>", unsafe_allow_html=True)
-    # הטור השלישי (col_spacer) רחב יותר כדי "לדחוף" את הפילטרים ימינה ולא לתת להם להימתח
     col_f1, col_f2, col_spacer = st.columns([1.5, 1.5, 4])
     
     with col_f1:
-        wave = st.selectbox("גל מחקר:", ["חיבור שניהם", "גל 19 במאי", "גל 25 במאי"])
+        # שליפת הגלים הקיימים
+        waves = df['wave'].unique().tolist()
+        selected_wave = st.selectbox("גל מחקר:", waves)
+    
     with col_f2:
-        if wave == "חיבור שניהם":
-            t_col = demo.get(st.selectbox("פילוח דמוגרפי:", list(demo.keys())), 3)
-        else:
-            t_col = 1 if wave == "גל 19 במאי" else 2
+        # יצירת אפשרויות הדמוגרפיה רק עבור הגל הנבחר (למנוע בחירות ריקות)
+        df_wave = df[df['wave'] == selected_wave].copy()
+        
+        # בניית רשימת התצוגה, למשל: "מגדר - נשים"
+        df_wave['demo_display'] = df_wave['demo_category'] + " - " + df_wave['demo_value']
+        demo_options = df_wave['demo_display'].unique().tolist()
+        
+        # קביעת ברירת המחדל ל"כללי - סהכ" אם קיים
+        default_idx = demo_options.index("כללי - סהכ") if "כללי - סהכ" in demo_options else 0
+        selected_demo = st.selectbox("פילוח דמוגרפי:", demo_options, index=default_idx)
 
-# חלוקה לטורים הראשיים
+# חיתוך הדאטה פריים לפי הפילוח שנבחר
+sel_cat, sel_val = selected_demo.split(" - ", 1)
+df_filtered = df_wave[(df_wave['demo_category'] == sel_cat) & (df_wave['demo_value'] == sel_val)]
+
+# ==========================================
+# 4. מבנה מרכזי (תפריט ימין ותרשים שמאל)
+# ==========================================
 col_side, col_chart = st.columns([1.2, 2.5], gap="large")
 
-# =====================================================================
-# 5. כרטיסיית תפריט צד (ימין)
-# =====================================================================
 with col_side:
     with st.container(border=True):
         st.markdown("<p style='font-weight: 700; color: #334155; margin-bottom: 10px; padding-right:10px;'>📋 בחר שאלה לניתוח:</p>", unsafe_allow_html=True)
-        sel_q = st.radio("", list(questions.keys()), label_visibility="collapsed")
+        # שאיבת השאלות הזמינות בפילוח הנוכחי
+        questions = df_filtered['question_text'].unique().tolist()
+        if not questions:
+            st.warning("אין נתונים לפילוח זה.")
+            st.stop()
+        sel_q = st.radio("", questions, label_visibility="collapsed")
 
-# =====================================================================
-# 6. כרטיסיית התרשים (שמאל)
-# =====================================================================
 with col_chart:
     with st.container(border=True):
-        labels, s_vals, m_vals = [], [], []
-        start_row = questions[sel_q] + 1
+        # סינון סופי רק לשאלה שנבחרה
+        plot_df = df_filtered[df_filtered['question_text'] == sel_q]
         
-        for i in range(start_row, len(df_s)):
-            row_s = df_s.iloc[i]
-            if pd.isna(row_s[0]) or "q" in str(row_s[0]).lower(): 
-                break
-                
-            txt = str(row_s[0]).lower().replace(" ", "")
-            if any(x in txt for x in ["total", "סהכ", "מדגם"]): 
-                continue
+        # שמירה על סדר התשובות המקורי
+        answers = plot_df['answer_text'].drop_duplicates().tolist()
+        
+        labels, s_vals, m_vals, s_ns = [], [], [], []
+        
+        # בניית הרשימות עבור Plotly
+        for ans in answers:
+            ans_data = plot_df[plot_df['answer_text'] == ans]
+            s_row = ans_data[ans_data['source'] == 'שילוב']
+            m_row = ans_data[ans_data['source'] == 'מדרוג']
             
-            s_val_raw = row_s[t_col] if t_col < len(row_s) else None
-            m_val_raw = df_m.iloc[i, t_col] if i < len(df_m) and t_col < len(df_m.iloc[i]) else None
+            s_val = s_row['percentage'].values[0] if not s_row.empty and pd.notna(s_row['percentage'].values[0]) else None
+            m_val = m_row['percentage'].values[0] if not m_row.empty and pd.notna(m_row['percentage'].values[0]) else None
+            s_n = s_row['n_size'].values[0] if not s_row.empty and pd.notna(s_row['n_size'].values[0]) else None
             
-            s_val = pd.to_numeric(s_val_raw, errors='coerce')
-            m_val = pd.to_numeric(m_val_raw, errors='coerce')
-            
-            labels.append(str(row_s[0]))
-            s_vals.append(float(s_val) if pd.notna(s_val) else None)
-            m_vals.append(float(m_val) if pd.notna(m_val) else None)
+            if s_val is not None or m_val is not None:
+                labels.append(ans)
+                s_vals.append(s_val)
+                m_vals.append(m_val)
+                s_ns.append(s_n)
 
-        if not labels or (all(x is None for x in s_vals) and all(x is None for x in m_vals)):
-            st.info("לא נמצאו נתונים להצגה.")
+        if not labels:
+            st.info("לא נמצאו נתונים להצגה עבור השאלה בפילוח זה.")
         else:
             fig = go.Figure()
             
+            # בניית הטקסטים שיוצגו ב-Hover, כולל גודל המדגם N
+            s_hover_texts = []
+            for v, n in zip(s_vals, s_ns):
+                if v is not None:
+                    n_txt = f"<br><b>גודל מדגם (N):</b> {int(n)}" if n is not None and not math.isnan(n) else ""
+                    s_hover_texts.append(f"<b>סקר שילוב:</b> {v}%{n_txt}<extra></extra>")
+                else:
+                    s_hover_texts.append("")
+                    
+            m_hover_texts = [f"<b>מדרוג:</b> {v}%<extra></extra>" if v is not None else "" for v in m_vals]
+
+            # 1. קווים מחברים
             for lbl, s_v, m_v in zip(labels, s_vals, m_vals):
                 if s_v is not None and m_v is not None:
                     fig.add_trace(go.Scatter(
@@ -167,31 +172,33 @@ with col_chart:
                         line=dict(color="#cbd5e1", width=2, dash="dot"), hoverinfo="skip", showlegend=False
                     ))
 
+            # 2. נקודות סקר שילוב
             fig.add_trace(go.Scatter(
                 x=s_vals, y=labels, mode="markers+text", name='סקר שילוב', 
                 marker=dict(color='#3b82f6', size=14, line=dict(color='white', width=3)),
-                text=[f"<b>{x:.1f}%</b>" if x is not None else "" for x in s_vals], 
+                text=[f"<b>{x}%</b>" if x is not None else "" for x in s_vals], 
                 textfont=dict(size=13, color="#2563eb", family="Assistant"), 
-                textposition="top center"
+                textposition="top center",
+                hovertemplate=s_hover_texts
             ))
             
+            # 3. נקודות מדרוג
             fig.add_trace(go.Scatter(
                 x=m_vals, y=labels, mode="markers+text", name='הוועדה למדרוג', 
                 marker=dict(color='#f97316', size=14, line=dict(color='white', width=3)),
-                text=[f"<b>{x:.1f}%</b>" if x is not None else "" for x in m_vals], 
+                text=[f"<b>{x}%</b>" if x is not None else "" for x in m_vals], 
                 textfont=dict(size=13, color="#ea580c", family="Assistant"), 
-                textposition="bottom center"
+                textposition="bottom center",
+                hovertemplate=m_hover_texts
             ))
 
-            # --- מניעת הצגת מספרים שליליים בציר ה-X ויצירת מרווח נקי ---
+            # חישוב טווח דינמי ונקי (מניעת חפיפת טקסט על ציר ה-Y ומניעת מספרים שליליים)
             valid_vals = [v for v in s_vals + m_vals if v is not None]
             max_val = max(valid_vals) if valid_vals else 100
             
-            # חישוב טווח דינמי ונקי
-            safe_max = max_val + (max_val * 0.15) # אוויר בצד שמאל
-            safe_min = -(max_val * 0.3) # משיכת הציר לתוך מינוס כדי ליצור רווח למילים
+            safe_max = max_val + (max_val * 0.15)
+            safe_min = -(max_val * 0.3)
             
-            # יצירת קפיצות נקיות לציר ה-X (למשל: 0, 5, 10...) כך שהמינוס לא יוצג כלל
             step = 5 if max_val <= 30 else 10
             clean_ticks = [i for i in range(0, int(safe_max) + step, step)]
 
@@ -209,7 +216,7 @@ with col_chart:
                 
                 xaxis=dict(
                     range=[safe_max, safe_min],
-                    tickvals=clean_ticks, # שימוש בערכים החיוביים בלבד שהגדרנו
+                    tickvals=clean_ticks,
                     showgrid=True, 
                     gridcolor="#f1f5f9", 
                     zeroline=False,
