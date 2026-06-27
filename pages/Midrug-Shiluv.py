@@ -67,42 +67,36 @@ labels = plot_df['answer_text'].drop_duplicates().tolist()
 
 with chart_col:
 
-    #########################################
+#########################################
     # כרטיס ראשון - סקר מול מדרוג: תרשים
     #########################################
     with st.container(border=True):
         if labels:
             st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
-            st.write("")
             
             table_data = []
+            fig = go.Figure()
+            
             for ans in labels:
                 s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
                 m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
+                
                 if len(s_val) and len(m_val):
                     table_data.append((ans, m_val[0] - s_val[0]))
-
-            fig = go.Figure()
-            wrapped_labels = [f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{lbl}</span>" for lbl in labels]
-            
-            for i, ans in enumerate(labels):
-                s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
-                m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
-                if len(s_val) and len(m_val):
-                    fig.add_trace(go.Scatter(x=[wrapped_labels[i], wrapped_labels[i]], y=[m_val[0], s_val[0]], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
+                    fig.add_trace(go.Scatter(x=[ans, ans], y=[m_val[0], s_val[0]], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
             
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
                 
-                for i, ans in enumerate(labels):
+                for ans in labels:
                     r_s = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
                     r_m = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
                     r_src = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == source_filter)]['percentage'].values
                     
                     if len(r_s) and len(r_m) and len(r_src):
                         s, m, val = round(r_s[0], 1), round(r_m[0], 1), round(r_src[0], 1)
-                        x_vals.append(wrapped_labels[i]); y_vals.append(val)
+                        x_vals.append(ans); y_vals.append(val)
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
                         txt_vals.append(f"<b>{val}%</b>")
                         txt_pos.append("top center" if s == m else "bottom center" if val <= min(s, m) else "top center")
@@ -128,6 +122,8 @@ with chart_col:
                 yaxis=dict(side="left", range=[-1, my], showticklabels=False, showgrid=True, gridcolor="#f3f4f6", zeroline=False)
             )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        else:
+            st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
             
             #########################################
             # כרטיס ראשון - סקר מול מדרוג: טבלה
