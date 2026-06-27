@@ -66,7 +66,7 @@ with st.container(border=True):
     title_col, filters_col = st.columns([1.1, 2.7])
     
     with title_col:
-        st.markdown("### 📊 השוואת מדרוג מול סקר שילוב")
+        st.markdown("### 📺 פרוייקט בדיקת הרייטינג")
         
     with filters_col:
         # פריסת הפילטרים כך שיישבו זה לצד זה באותה השורה בצורה מרווחת
@@ -113,14 +113,14 @@ with chart_col:
         demo_display = sel_d if 'sel_d' in locals() and sel_w == "ממוצע שני הגלים" else "כללי"
         st.markdown(f"""
             <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background-color: #f9fafb; margin-bottom: 12px; display: flex; align-items: center;">
-                <span style="font-size:1.75rem; margin-left: 10px;">🗺️</span>
+                <span style="font-size:1.75rem; margin-left: 10px;">ℹ️</span>
                 <span style="font-size:1.75rem; font-weight:bold; color:#374151;">&nbsp;{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; {demo_display}</span>
             </div>
         """, unsafe_allow_html=True)
         
     with st.container(border=True):
         if labels:
-            st.markdown(f"### 📈 ניתוח ותצוגת נתונים")
+            st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
             st.write("")
             
             # --- הכנת נתוני הטבלה ---
@@ -253,7 +253,7 @@ if len(available_channels) > 1:
     st.write("")
     with chart_col:
         with st.container(border=True):
-            st.markdown("### 📊 נתח שוק יחסי (Share of Voice) מתוך ערוצי הברודקאסט")
+            st.markdown("### 📊 נתח שוק יחסי מתוך ערוצי הברודקאסט")
             st.write("")
             
             fig_sov = go.Figure()
@@ -322,7 +322,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
     with chart_col:
         with st.container(border=True):
             i24_answer_text = next((ans for ans in labels if "i24" in ans), None)
-            st.markdown(f"<h3>{sel_q} &nbsp;–&nbsp; i24news</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h3>👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news</h3>", unsafe_allow_html=True)
             st.write("")
             
             demo_table_data, demo_wrapped_labels, demo_y_s_vals, demo_y_m_vals = [], [], [], []
