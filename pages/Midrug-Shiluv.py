@@ -197,7 +197,7 @@ with chart_col:
                 height=max(450, len(labels)*25),
                 legend=dict(
                     orientation="h", 
-                    y=1.15,
+                    y=1.35,
                     x=0.5, 
                     xanchor="center"
                 ),
