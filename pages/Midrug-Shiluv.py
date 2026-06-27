@@ -11,19 +11,19 @@ st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
     
-    /* מרווח וקו תחתון בין אפשרויות הרדיו וריווח הלייבל מהאפשרויות */
+    /* מרווח וקו תחתון בין אפשרויות הרדיו, כפתור ימני וטקסט שמאלי */
     .stRadio label {
         padding: 15px 0 !important;
         border-bottom: 1px solid #f3f4f6;
         display: flex !important;
         align-items: center !important;
-        flex-direction: row-reverse !important; /* היפוך כיוון בתוך השורה כדי שהעיגול יהיה מימין לטקסט */
+        flex-direction: row !important; /* כפתור הרדיו יופיע מימין והטקסט משמאלו */
         justify-content: flex-start !important;
     }
     
-    /* הוספת מרווח בין כפתור הבחירה העגול (ה-input) לבין הטקסט שצמוד אליו */
+    /* הוספת מרווח בין כפתור הבחירה העגול לטקסט שמופיע משמאלו */
     .stRadio label input[type="radio"] {
-        margin-left: 15px !important; /* מרחיק את העיגול שמאלה מהטקסט */
+        margin-left: 15px !important; /* מרחיק את העיגול ימינה מהקצה, והטקסט יקבל מרווח ממנו */
         margin-right: 0 !important;
     }
     
