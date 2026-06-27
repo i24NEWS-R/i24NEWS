@@ -114,7 +114,7 @@ with chart_col:
         st.markdown(f"""
             <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; background-color: #f9fafb; margin-bottom: 12px; display: flex; align-items: center;">
                 <span style="font-size: 18px; margin-left: 10px;">🗺️</span>
-                <span style="font-size:13px; font-weight:bold; color:#374151;">נתיב סינון נוכחי: &nbsp;{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; {demo_display}</span>
+                <span style="font-size:13px; font-weight:bold; color:#374151;">&nbsp;{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; {demo_display}</span>
             </div>
         """, unsafe_allow_html=True)
         
