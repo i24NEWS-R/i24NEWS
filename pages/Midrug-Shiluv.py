@@ -6,11 +6,17 @@ import random
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# סגנון קבוע ודריסה ספציפית לתרשים כדי למנוע בריחת טקסטים
+# סגנון קבוע, דריסת כיווניות לתרשים וריווח בתפריט הרדיו
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
-    .stRadio > div {gap:1rem;padding-top:1rem}
+    
+    /* ריווח מוגדל בין אפשרויות הרדיו בתפריט השאלות */
+    .stRadio label {
+        padding-top: 12px !important;
+        padding-bottom: 12px !important;
+        border-bottom: 1px solid #f3f4f6;
+    }
     
     /* דריסת כיווניות עבור אזור התרשים בלבד */
     div[data-testid="stPlotlyChart"] * {
@@ -32,9 +38,9 @@ def load_data():
 df = load_data()
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
-# אזור הפילטרים
+# אזור הפילטרים - הקצאת רוחב גדולה יותר לעמודת הכותרת למניעת שבירת שורות
 with st.container(border=True):
-    cols = st.columns([1.5, 1, 2.5, 1, 2.5, 1.5, 3])
+    cols = st.columns([2.2, 1, 2.5, 1, 2.5, 1.5, 3])
     cols[0].markdown("### 🎯 סינון נתונים")
     cols[1].write("ימי מדידה:")
     sel_p = cols[2].selectbox("", ["אמצע שבוע", "סוף שבוע"], label_visibility="collapsed")
@@ -51,8 +57,9 @@ with st.container(border=True):
         cols[6].selectbox("", ["כללי (זמין בחיבור הגלים)"], disabled=True, label_visibility="collapsed")
         cat, val = "כללי", "סהכ"
 
+# הוסרו הקו המפריד והרווח המיותר מתחתיו
+
 df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
-st.divider()
 
 # אזור התצוגה - תפריט לצד גרף
 q_list = df_f['question_text'].unique().tolist()
@@ -65,6 +72,7 @@ menu_col, chart_col = st.columns([1.3, 2.5], gap="large")
 with menu_col:
     with st.container(border=True):
         st.markdown("### 📋 בחירת שאלה:")
+        st.write("") # מרווח קל בין הכותרת לכפתורי הרדיו
         sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
 
 plot_df = df_f[df_f['question_text'] == sel_q]
@@ -73,8 +81,8 @@ labels = plot_df['answer_text'].drop_duplicates().tolist()
 with chart_col:
     with st.container(border=True):
         if labels:
-            # הצגת השאלה הנבחרה מעל התרשים באותו הגודל של הכותרות
-            st.markdown(f"### {sel_q}")
+            # הצגת השאלה הנבחרה מעל התרשים באותו הגודל של הכותרות בתוספת אייקון
+            st.markdown(f"### 📋 {sel_q}")
             st.write("")
             
             fig = go.Figure()
