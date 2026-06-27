@@ -6,9 +6,7 @@ import math
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# ==========================================
-# 1. יישור RTL גורף (מוגדר פעם אחת בסיסית)
-# ==========================================
+# יישור RTL גורף
 st.markdown("""
 <style>
     * {
@@ -18,48 +16,36 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. לוגיקת נתונים
-# ==========================================
 @st.cache_data
 def load_data():
-    try:
-        path = os.path.join(os.path.dirname(__file__), "Midrug-Shiluv.csv")
-        return pd.read_csv(path)
-    except FileNotFoundError:
+    path = os.path.join(os.path.dirname(__file__), "Midrug-Shiluv.csv")
+    if not os.path.exists(path):
         st.error("שגיאה: הקובץ Midrug-Shiluv.csv לא נמצא.")
         st.stop()
+    return pd.read_csv(path)
 
 df = load_data()
 
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
 # ==========================================
-# 3. אזור הפילטרים בפייתון טהור (תוויות לצד התיבות)
+# אזור הפילטרים
 # ==========================================
 with st.container(border=True):
-    # חלוקה מדויקת לעמודות אופקיות בפייתון
     col_title, lbl1, box1, lbl2, box2, lbl3, box3 = st.columns([1.8, 1.2, 3, 1.0, 3, 1.5, 3.2], gap="small")
     
     with col_title:
         st.markdown("### 🎯 סינון נתונים")
-        
-    with lbl1:
-        st.write("ימי מדידה:")
-    with box1:
-        sel_period = st.selectbox("", ["אמצע שבוע", "סוף שבוע"], index=0, label_visibility="collapsed")
     
-    with lbl2:
-        st.write("גל מחקר:")
+    with lbl1: st.write("ימי מדידה:")
+    with box1: sel_period = st.selectbox("", ["אמצע שבוע", "סוף שבוע"], index=0, label_visibility="collapsed")
+    
+    with lbl2: st.write("גל מחקר:")
     with box2:
-        if sel_period == "אמצע שבוע":
-            waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"]
-        else:
-            waves = ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
+        waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"] if sel_period == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
         sel_wave = st.selectbox("", waves, index=2, label_visibility="collapsed")
     
-    with lbl3:
-        st.write("פילוח דמוגרפי:")
+    with lbl3: st.write("פילוח דמוגרפי:")
     with box3:
         if sel_wave == "חיבור שני הגלים":
             df_w = df[(df['period'] == sel_period) & (df['wave'] == sel_wave)]
@@ -70,10 +56,7 @@ with st.container(border=True):
             default_idx = list(opts).index("כללי") if "כללי" in opts else 0
             sel_demo = st.selectbox("", opts, index=default_idx, label_visibility="collapsed")
             
-            if sel_demo == "כללי":
-                cat, val = "כללי", "סהכ"
-            else:
-                cat, val = sel_demo.split(" - ", 1)
+            cat, val = ("כללי", "סהכ") if sel_demo == "כללי" else sel_demo.split(" - ", 1)
         else:
             st.selectbox("", ["כללי (זמין בחיבור הגלים)"], disabled=True, label_visibility="collapsed")
             cat, val = "כללי", "סהכ"
@@ -83,7 +66,7 @@ df_filtered = df[(df['period'] == sel_period) & (df['wave'] == sel_wave) & (df['
 st.divider()
 
 # ==========================================
-# 4. אזור התרשים והשאלות
+# אזור התרשים והשאלות
 # ==========================================
 col_side, col_chart = st.columns([1.3, 2.5], gap="large")
 
@@ -114,25 +97,28 @@ with col_chart:
                 s_row = ans_data[ans_data['source'] == 'שילוב']
                 m_row = ans_data[ans_data['source'] == 'מדרוג']
                 
-                s_vals.append(s_row['percentage'].values[0] if not s_row.empty else None)
-                m_vals.append(m_row['percentage'].values[0] if not m_row.empty else None)
+                s_val = s_row['percentage'].values[0] if not s_row.empty else None
+                m_val = m_row['percentage'].values[0] if not m_row.empty else None
+                
+                s_vals.append(s_val)
+                m_vals.append(m_val)
                 s_ns.append(s_row['n_size'].values[0] if not s_row.empty else None)
 
-            # קווים מחברים
-            for lbl, s, m in zip(labels, s_vals, m_vals):
-                if s is not None and m is not None:
+                # קווים מחברים
+                if s_val is not None and m_val is not None:
                     fig.add_trace(go.Scatter(
-                        x=[m, s], y=[lbl, lbl], mode="lines", 
+                        x=[m_val, s_val], y=[ans, ans], mode="lines", 
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False
                     ))
                     
-            # פונקציה להוספת נקודות
             def add_points(vals, name, color, is_left, ns=None):
                 texts = [f"<b>{x}%</b>" if x is not None else "" for x in vals]
                 hover = []
                 for v, n in zip(vals, ns or [None]*len(vals)):
-                    if v is None: hover.append("")
-                    else: hover.append(f"<b>{name}:</b> {v}%" + (f"<br><b>N:</b> {int(n)}" if n and not math.isnan(n) else "") + "<extra></extra>")
+                    if v is None: 
+                        hover.append("")
+                    else: 
+                        hover.append(f"<b>{name}:</b> {v}%" + (f"<br><b>N:</b> {int(n)}" if n and not math.isnan(n) else "") + "<extra></extra>")
                     
                 fig.add_trace(go.Scatter(
                     x=vals, y=labels, mode="markers+text", name=name,
