@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import os
+import random
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
@@ -92,7 +93,7 @@ with chart_col:
                     ))
             
             # הוספת הנקודות והטקסטים עם עיגול לספרה אחת ויישום הכללים המדויקים
-            def add_points(source_filter, source_name, color):
+            def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
                 for i, ans in enumerate(labels):
@@ -116,8 +117,16 @@ with chart_col:
                             s_val = round(s_val, 1)
                             m_val = round(m_val, 1)
                             
-                            # במצב שני נתונים: הנמוך משמאל לבולט, הגבוה מימין לבולט
-                            if val < min(s_val, m_val) or val == min(s_val, m_val):
+                            if s_val == m_val:
+                                # ערכים תואמים לחלוטין -> בחירה אקראית של מיקום (שמאל או ימין)
+                                rand_pos = random.choice(["middle left", "middle right"])
+                                if source_filter == "שילוב":
+                                    txt_pos.append(rand_pos)
+                                else:
+                                    # המקור השני יקבל את הצד ההפוך
+                                    txt_pos.append("middle right" if rand_pos == "middle left" else "middle left")
+                            # שני נתונים שונים -> הנמוך משמאל לבולט, הגבוה מימין לבולט
+                            elif val < min(s_val, m_val) or val == min(s_val, m_val):
                                 txt_pos.append("middle left")
                             else:
                                 txt_pos.append("middle right")
@@ -129,15 +138,17 @@ with chart_col:
                         txt_vals.append("")
                         txt_pos.append("middle center")
                         
+                # צבע מותאם לכל מקור
+                color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
                 fig.add_trace(go.Scatter(
                     x=x_vals, y=y_vals, mode="markers+text", name=source_name,
-                    marker=dict(color=color, size=14, line=dict(color='white', width=2)),
-                    text=txt_vals, textfont=dict(size=12, color=color, weight="bold"),
+                    marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
+                    text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
                     textposition=txt_pos, hovertemplate=hover_vals
                 ))
 
-            add_points('שילוב', 'סקר שילוב', '#2563eb')
-            add_points('מדרוג', 'הוועדה למדרוג', '#ea580c')
+            add_points('שילוב', 'סקר שילוב')
+            add_points('מדרוג', 'הוועדה למדרוג')
 
             v_all = plot_df['percentage'].dropna().tolist()
             mx = max(v_all, default=100)
@@ -155,7 +166,7 @@ with chart_col:
                 ),
                 xaxis=dict(
                     side="top", 
-                    range=[-10, mx * 1.3], # הגרף מתחיל ממינוס 10 כדי לתת מרווח כאשר הערך קרוב לאפס
+                    range=[-10, mx * 1.3], # מתחיל ממינוס 10 לתת מרווח לקצה האפס
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
