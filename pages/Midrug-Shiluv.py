@@ -115,7 +115,7 @@ with chart_col:
             my = max(all_vals, default=100) * 1.15
             
             fig.update_layout(
-                margin=dict(l=20, r=20, t=20, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=40, r=40, t=0, b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
                 height=380, legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", yanchor="top"),
                 xaxis=dict(side="bottom", showticklabels=False, showgrid=False, zeroline=False),
                 yaxis=dict(side="left", range=[-1, my], showticklabels=False, showgrid=True, gridcolor="#f3f4f6", zeroline=False)
