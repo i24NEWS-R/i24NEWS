@@ -230,7 +230,7 @@ with chart_col:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
 
 # ==============================================================================
-# --- כרטיס חדש: תרשים נתח שוק (SOV) מוערם 100% (רק לשאלות ערוצים) ---
+# --- כרטיס תרשים נתח שוק (SOV) מוערם 100% מנוטרל מרעשי רקע ---
 # ==============================================================================
 target_channels = ["ערוץ כאן 11", "ערוץ קשת 12", "ערוץ רשת 13", "ערוץ עכשיו 14", "ערוץ i24news (אפיק 15)"]
 channel_colors = {
@@ -241,7 +241,6 @@ channel_colors = {
     "ערוץ i24news (אפיק 15)": "#2563eb" # כחול
 }
 
-# בדיקה האם לפחות שניים מהערוצים הנבחרים קיימים בתשובות לשאלה הנוכחית
 available_channels = [c for c in target_channels if c in labels]
 
 if len(available_channels) > 1:
@@ -253,57 +252,56 @@ if len(available_channels) > 1:
             
             fig_sov = go.Figure()
             
-            # מעבר על השיטות: מדרוג (אינדקס 0) ולאחר מכן סקר שילוב (אינדקס 1)
             for idx, (source_name, source_key) in enumerate([("הוועדה למדרוג", "מדרוג"), ("סקר שילוב", "שילוב")]):
                 source_data = plot_df[plot_df['source'] == source_key]
                 
-                # חישוב הסכום של 5 הערוצים שנבחרו בלבד (ללא רעשים/תשובות אחרות)
-                sum_selected_channels = source_data[source_data['answer_text'].isin(available_channels)]['percentage'].sum()
+                # מציאת הערכים הגולמיים של 5 הערוצים בלבד
+                channel_values = []
+                for channel in available_channels:
+                    val = source_data[source_data['answer_text'] == channel]['percentage'].values[0] if not source_data[source_data['answer_text'] == channel].empty else 0
+                    channel_values.append(val)
                 
-                if sum_selected_channels > 0:
-                    for channel in available_channels:
-                        val = source_data[source_data['answer_text'] == channel]['percentage'].values[0] if not source_data[source_data['answer_text'] == channel].empty else 0
-                        # נירמול הנתח כך שסכום 5 הערוצים יהווה 100% בדיוק
-                        share = (val / sum_selected_channels) * 100
-                        
-                        # מניעת כפילות במקראה - הצגת השם רק בסדרה הראשונה (מדרוג)
-                        show_legend_item = (idx == 0)
+                # סכימה מחודשת של 5 הערוצים בלבד כדי לקבל את הבסיס (100% האמיתי של העוגה)
+                sum_5_channels = sum(channel_values)
+                
+                if sum_5_channels > 0:
+                    for i, channel in enumerate(available_channels):
+                        # חישוב הנתח היחסי מתוך הסכום של 5 הערוצים בלבד
+                        normalized_share = (channel_values[i] / sum_5_channels) * 100
                         
                         fig_sov.add_trace(go.Bar(
                             name=channel,
                             legendgroup=channel,
-                            showlegend=show_legend_item,
+                            showlegend=(idx == 0),
                             y=[source_name],
-                            x=[share],
+                            x=[normalized_share],
                             orientation='h',
                             marker=dict(color=channel_colors.get(channel, "#000")),
-                            hovertemplate=f"{channel}<br>נתח: %{{x:.1f}}%<extra></extra>",
-                            text=f"{share:.1f}%" if share > 5 else "", 
+                            hovertemplate=f"{channel}<br>נתח מתוך הברודקאסט: %{{x:.1f}}%<extra></extra>",
+                            text=f"{normalized_share:.1f}%" if normalized_share > 5 else "", 
                             textposition='inside',
                             textfont=dict(color="white", weight="bold")
                         ))
             
             fig_sov.update_layout(
                 barmode='stack',
-                height=220,
-                # מתיחת התרשים ל-100% רוחב מלא בתוך הקונטיינר
+                height=200,
                 autosize=True,
-                margin=dict(l=20, r=20, t=20, b=40),
+                margin=dict(l=20, r=20, t=20, b=50),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 showlegend=True,
                 legend=dict(
                     orientation="h", 
-                    y=-0.3, 
+                    y=-0.4, 
                     x=0.5, 
                     xanchor="center",
-                    font=dict(size=12)
+                    font=dict(size=11)
                 ),
                 xaxis=dict(showticklabels=False, showgrid=False, range=[0, 100]),
                 yaxis=dict(tickfont=dict(weight="bold", size=14))
             )
             
-            # שימוש ב-use_container_width=True כדי להבטיח ניצול מלא של רוחב העמודה
             st.plotly_chart(fig_sov, use_container_width=True, config={'displayModeBar': False})
 
 # ==============================================================================
