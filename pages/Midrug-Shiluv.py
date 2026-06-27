@@ -274,9 +274,9 @@ with chart_col:
             
             fig_sov.update_layout(
                 barmode='stack',
-                height=150,
+                height=200,
                 autosize=True,
-                bargap=0.1,
+                bargap=0.25,
                 margin=dict(l=125, r=20, t=0, b=0),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
