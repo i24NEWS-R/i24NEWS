@@ -361,7 +361,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                 
                 with t_side:
                     # בניית טבלת LTR אנכית
-                    demo_html = """
+demo_html = """
                     <style>
                         .demo-table {
                             width: 100% !important;
@@ -410,6 +410,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                             val_str = f"{d_diff:.1f}%"
                             val_class = "d-zero"
                             
+                        # --- כאן בוצע התיקון: הוספת תגיות tr וסגירתן בצורה נכונה לכל שורה ---
                         demo_html += f"""
                             <tr>
                                 <td class="demo-td {val_class}">{val_str}</td>
