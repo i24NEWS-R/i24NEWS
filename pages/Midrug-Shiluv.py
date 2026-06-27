@@ -241,6 +241,10 @@ with chart_col:
             if table_data:
                 col_count = len(table_data)
                 
+                # חישוב ממוצע הפערים לצורך מציאת הפער המחקרי האמיתי
+                all_diffs = [diff for _, diff in table_data]
+                mean_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
+                
                 html_code = f"""
                 <style>
                     .custom-table {{
@@ -285,8 +289,9 @@ with chart_col:
                 """
                 for ans, _ in table_data:
                     html_code += f'<th class="custom-th">{ans}</th>'
-                html_code += "</tr></thead><tbody><tr>"
                 
+                # שורה 1: פער אבסולוטי
+                html_code += "</tr></thead><tbody><tr>"
                 for _, diff in table_data:
                     if diff > 0:
                         val_str = f"+{diff:.1f}%"
@@ -296,6 +301,20 @@ with chart_col:
                         html_code += f'<td class="custom-td neg-val">{val_str}</td>'
                     else:
                         val_str = f"{diff:.1f}%"
+                        html_code += f'<td class="custom-td zero-val">{val_str}</td>'
+
+                # שורה 2: הפער המחקרי האמיתי (הפער האבסולוטי בניכוי ממוצע פערים שוק) ללא כותרת
+                html_code += "</tr><tr>"
+                for _, diff in table_data:
+                    adj_diff = diff - mean_diff
+                    if adj_diff > 0:
+                        val_str = f"+{adj_diff:.1f}%"
+                        html_code += f'<td class="custom-td pos-val">{val_str}</td>'
+                    elif adj_diff < 0:
+                        val_str = f"{adj_diff:.1f}%"
+                        html_code += f'<td class="custom-td neg-val">{val_str}</td>'
+                    else:
+                        val_str = f"{adj_diff:.1f}%"
                         html_code += f'<td class="custom-td zero-val">{val_str}</td>'
                         
                 html_code += "</tr></tbody></table>"
