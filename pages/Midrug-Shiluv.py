@@ -322,7 +322,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
     with chart_col:
         with st.container(border=True):
             i24_answer_text = next((ans for ans in labels if "i24" in ans), None)
-            st.markdown(f"<h3>👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news</h3>", unsafe_allow_html=True)
+            st.markdown(f"### 👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news")
             st.write("")
             
             demo_table_data, demo_wrapped_labels, demo_y_s_vals, demo_y_m_vals = [], [], [], []
