@@ -118,7 +118,7 @@ with chart_col:
             st.markdown(f"### 📋 {sel_q}")
             st.write("")
             
-            # --- בניית הטבלה להשוואת נתונים ---
+            # --- בניית הטבלה המבוקשת (תשובות בשורה 1, פער בשורה 2) ---
             table_data = {}
             for ans in labels:
                 s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
@@ -127,25 +127,37 @@ with chart_col:
                 s_v = s_row['percentage'].values[0] if not s_row.empty else None
                 m_v = m_row['percentage'].values[0] if not m_row.empty else None
                 
-                # מציגים רק תשובות שקיימות בשני המקורות
+                # מציגים פערים רק לתשובות שקיימות בשני המקורות
                 if s_v is not None and m_v is not None:
                     diff = s_v - m_v
-                    # עיצוב ההפרש כך שיוצג עם פלוס/מינוס באחוזים
-                    diff_str = f"+{diff:.1f}%" if diff > 0 else f"{diff:.1f}%"
-                    table_data[ans] = {
-                        "סקר שילוב": f"{s_v:.1f}%",
-                        "ועדת מדרוג": f"{m_v:.1f}%",
-                        "הפרש (שילוב - מדרוג)": diff_str
-                    }
+                    # שמירת הערך המספרי לצורך צביעה מותנית ב-Styler
+                    table_data[ans] = diff
             
-            # הצגת הטבלה רק אם יש לפחות תשובה אחת עם נתונים לשני המקורות
             if table_data:
-                st.markdown("##### 🔍 השוואת נתונים (סקר שילוב מול ועדת מדרוג)")
-                # הפיכת המילון ל-DataFrame והצגתו
-                df_table = pd.DataFrame(table_data).T
-                st.table(df_table)
+                st.markdown("##### 📉 פערים באחוזים (סקר שילוב מול ועדת מדרוג)")
+                
+                # יצירת DataFrame שבו השורות הן התשובות והעמודה היא הפער
+                df_diff = pd.DataFrame.from_dict(table_data, orient='index', columns=['פער (שילוב - מדרוג)'])
+                
+                # טרנספוזיציה כדי שהתשובות יהיו עמודות (שורה ראשונה בטבלה המוצגת)
+                df_diff_transposed = df_diff.T
+                
+                # פונקציית עיצוב להצגת המספרים עם סימן וצבעים (ירוק לחיובי, אדום לשלילי)
+                def color_diff(val):
+                    if val > 0:
+                        return f'color: green; font-weight: bold;'
+                    elif val < 0:
+                        return f'color: red; font-weight: bold;'
+                    return f'color: black;'
+
+                def format_diff(val):
+                    return f"+{val:.1f}%" if val > 0 else f"{val:.1f}%"
+
+                # החלת העיצוב והצגת הטבלה
+                styled_table = df_diff_transposed.style.map(color_diff).format(format_diff)
+                st.dataframe(styled_table, use_container_width=True)
                 st.write("")
-            # ----------------------------------
+            # --------------------------------------------------------
             
             fig = go.Figure()
             
