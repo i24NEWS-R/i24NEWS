@@ -207,7 +207,7 @@ with chart_col:
             my = true_max * 1.15
             
             fig.update_layout(
-                margin=dict(l=80, r=80, t=20, b=20), # שוליים צדדיים מורחבים לפריסה מלאה ב-100% רוחב
+                margin=dict(l=20, r=20, t=20, b=20), # שוליים צדדיים מורחבים לפריסה מלאה ב-100% רוחב
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
                 height=380, 
@@ -308,15 +308,22 @@ with chart_col:
 # ==============================================================================
 # --- כרטיס חדש: תרשים ממוקד i24news לפי פילוחים דמוגרפיים (מוצג רק בממוצע גלים) ---
 # ==============================================================================
-if sel_w == "ממוצע שני הגלים" and "i24news" in labels:
+# בדיקה האם קיימת לפחות תשובה אחת שמכילה את המחרוזת "i24"
+has_i24 = any("i24" in ans for ans in labels)
+
+if sel_w == "ממוצע שני הגלים" and has_i24:
     st.write("") # מרווח קל בין הקונטיינרים
     with chart_col:
         with st.container(border=True):
             st.markdown(f"<p style='font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:4px;'>{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; פילוח דמוגרפי</p>", unsafe_allow_html=True)
-            st.markdown(f"### {sel_q} &nbsp;–&nbsp; i24news")
+            
+            # איתור השם המלא המדויק של התשובה שמכילה i24 לצורך שליפת הנתונים
+            i24_answer_text = next((ans for ans in labels if "i24" in ans), None)
+            
+            st.markdown(f"<h3>{sel_q} &nbsp;–&nbsp; {i24_answer_text}</h3>", unsafe_allow_html=True)
             st.write("")
             
-            # סינון הדמוגרפיות שבהן קיימת התשובה i24news
+            # סינון הדמוגרפיות שבהן קיימת התשובה המכילה i24
             demo_table_data = []
             demo_x_vals = []
             demo_y_s_vals = []
@@ -334,9 +341,9 @@ if sel_w == "ממוצע שני הגלים" and "i24news" in labels:
                 else:
                     d_cat, d_val = demo_opt.split(" - ", 1)
                     
-                # שליפת הנתונים לסינון הנוכחי עבור השאלה ועבור התשובה i24news
+                # שליפת הנתונים לסינון הנוכחי עבור השאלה ועבור התשובה המדויקת
                 demo_df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == d_cat) & (df['demo_value'] == d_val)]
-                demo_plot_df = demo_df_f[(demo_df_f['question_text'] == sel_q) & (demo_df_f['answer_text'] == "i24news")]
+                demo_plot_df = demo_df_f[(demo_df_f['question_text'] == sel_q) & (demo_df_f['answer_text'] == i24_answer_text)]
                 
                 if not demo_plot_df.empty:
                     s_row = demo_plot_df[demo_plot_df['source'] == 'שילוב']
@@ -424,7 +431,7 @@ if sel_w == "ממוצע שני הגלים" and "i24news" in labels:
 
                 st.plotly_chart(fig_demo, use_container_width=True, config={'displayModeBar': False})
 
-                # --- טבלת פירוט לפילוחים הדמוגרפיים של i24news ---
+                # --- טבלת פירוט לפילוחים הדמוגרפיים של הערוץ ---
                 demo_col_count = len(demo_table_data)
                 demo_html = f"""
                 <style>
