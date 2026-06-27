@@ -106,6 +106,10 @@ labels = plot_df['answer_text'].drop_duplicates().tolist()
 with chart_col:
     with st.container(border=True):
         if labels:
+            # מראה מיקום בטקסט קטן ובולד מעל התשובה שמעל התרשים
+            demo_display = sel_d if 'sel_d' in locals() and sel_w == "חיבור שני הגלים" else "כללי"
+            st.markdown(f"<p style='font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:4px;'>{sel_p} &gt; {sel_w} &gt; {demo_display}</p>", unsafe_allow_html=True)
+            
             st.markdown(f"### 📋 {sel_q}")
             st.write("")
             
