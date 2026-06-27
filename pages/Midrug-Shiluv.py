@@ -91,8 +91,8 @@ with chart_col:
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False, hoverinfo="skip"
                     ))
             
-            # הוספת הנקודות והטקסטים (הנמוך תמיד משמאל לנקודה, הגבוה מימין לנקודה)
-            def add_points(source_filter, source_name, color):
+            # הוספת הנקודות והטקסטים (טיפול בנתון בודד וריווח ערכים הקרובים לאפס)
+            def add_points(source_filter, source_name, color, is_shiluv_source):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
                 for i, ans in enumerate(labels):
@@ -109,13 +109,17 @@ with chart_col:
                         s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else -1
                         m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else -1
                         
-                        if s_val != -1 and m_val != -1:
-                            if val == min(s_val, m_val):
+                        # מצב שבו קיים רק נתון אחד מבין השניים (השני לא קיים / שווה למינוס 1)
+                        if s_val == -1 or m_val == -1:
+                            txt_pos.append("middle right" if is_shiluv_source else "middle left")
+                        else:
+                            # מרווח לערך הקרוב לאפס כדי למנוע היעלמות/חיתוך
+                            if val == min(s_val, m_val) and val < 5:
+                                txt_pos.append("middle right") 
+                            elif val == min(s_val, m_val):
                                 txt_pos.append("middle left")
                             else:
                                 txt_pos.append("middle right")
-                        else:
-                            txt_pos.append("middle center")
                     else:
                         hover_vals.append("")
                         txt_vals.append("")
@@ -128,20 +132,20 @@ with chart_col:
                     textposition=txt_pos, hovertemplate=hover_vals
                 ))
 
-            add_points('שילוב', 'סקר שילוב', '#2563eb')
-            add_points('מדרוג', 'הוועדה למדרוג', '#ea580c')
+            add_points('שילוב', 'סקר שילוב', '#2563eb', True)
+            add_points('מדרוג', 'הוועדה למדרוג', '#ea580c', False)
 
             v_all = plot_df['percentage'].dropna().tolist()
             mx = max(v_all, default=100)
             
             fig.update_layout(
-                margin=dict(l=280, r=40, t=60, b=100), # מרווח עליון (t) מוגדל כדי לפנות מקום למקרא שמעל הגרף
+                margin=dict(l=280, r=40, t=60, b=100), # מרווח עליון מוגדל עבור המקרא
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
                 height=max(450, len(labels)*100),
                 legend=dict(
                     orientation="h", 
-                    y=1.15, # מקרא ממוקם כעת בחלק העליון מעל התרשים
+                    y=1.15, # מקרא ממוקם מעל התרשים בצורה מרווחת
                     x=0.5, 
                     xanchor="center"
                 ),
