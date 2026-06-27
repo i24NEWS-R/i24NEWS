@@ -63,7 +63,7 @@ with chart_col:
         if labels:
             fig = go.Figure()
             
-            # קו מקווקו המחבר בין התוצאות לכל תשובה
+            # הוספת קווים מקווקווים
             for ans in labels:
                 s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
                 m_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]
@@ -77,12 +77,10 @@ with chart_col:
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False
                     ))
             
-            # פונקציה להוספת הנקודות והטקסטים תוך מניעת חפיפה
-            def add_points_smart(source_filter, source_name, color):
+            # פונקציה להוספת נקודות עם Hover תקין וללא טקסט עולה
+            def add_points(source_filter, source_name, color):
                 x_vals = []
                 y_vals = []
-                txt_vals = []
-                txt_pos = []
                 hover_vals = []
                 
                 for ans in labels:
@@ -92,55 +90,46 @@ with chart_col:
                     if val is not None:
                         x_vals.append(val)
                         y_vals.append(ans)
-                        txt_vals.append(f"<b>{val}%</b>")
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
-                        
-                        # השוואה מול המקור השני כדי לקבוע מי גבוה/נמוך יותר באותה שאלה
-                        s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else -1
-                        m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else -1
-                        
-                        if s_val != -1 and m_val != -1:
-                            # הנמוך תמיד מימין לבולט, הגבוה תמיד משמאל לבולט
-                            if val == min(s_val, m_val):
-                                txt_pos.append("middle right")
-                            else:
-                                txt_pos.append("middle left")
-                        else:
-                            txt_pos.append("middle center")
                     else:
                         x_vals.append(None)
                         y_vals.append(ans)
-                        txt_vals.append("")
                         hover_vals.append("")
-                        txt_pos.append("middle center")
                         
                 fig.add_trace(go.Scatter(
-                    x=x_vals, y=y_vals, mode="markers+text", name=source_name,
+                    x=x_vals, y=y_vals, mode="markers", name=source_name,
                     marker=dict(color=color, size=14, line=dict(color='white', width=2)),
-                    text=txt_vals, textfont=dict(size=13, color=color),
-                    textposition=txt_pos, hovertemplate=hover_vals
+                    hovertemplate=hover_vals
                 ))
 
-            # שילוב ולאחר מכן מדרוג
-            add_points_smart('שילוב', 'סקר שילוב', '#2563eb')
-            add_points_smart('מדרוג', 'הוועדה למדרוג', '#ea580c')
+            add_points('שילוב', 'סקר שילוב', '#2563eb')
+            add_points('מדרוג', 'הוועדה למדרוג', '#ea580c')
 
             v_all = plot_df['percentage'].dropna().tolist()
             mx = max(v_all, default=100)
             
             fig.update_layout(
-                # הגדלת ה-margin הימני כדי למנוע חיתוך של תוויות התשובות הארוכות
-                margin=dict(l=10, r=200, t=30, b=60), 
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(l=10, r=220, t=30, b=80), # מרווח ימני גדול לתוויות ארוכות
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
                 height=max(350, len(labels)*70),
-                # מיקום מסודר למקרא בתחתית מבלי להפריע ללייבלים
-                legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center"),
+                legend=dict(
+                    orientation="h", 
+                    y=-0.3, # הזזה כלפי מטה של המקרא
+                    x=0.5, 
+                    xanchor="center"
+                ),
                 xaxis=dict(
-                    range=[mx*1.15, -(mx*0.3)], showgrid=True, gridcolor="#f3f4f6", 
-                    zeroline=False, ticksuffix="%"
+                    range=[mx*1.15, -(mx*0.3)], 
+                    showgrid=True, 
+                    gridcolor="#f3f4f6", 
+                    zeroline=False, 
+                    ticksuffix="%"
                 ),
                 yaxis=dict(
-                    side="right", categoryorder="array", categoryarray=labels[::-1], 
+                    side="right", 
+                    categoryorder="array", 
+                    categoryarray=labels[::-1], 
                     tickfont=dict(size=14, weight="bold")
                 )
             )
