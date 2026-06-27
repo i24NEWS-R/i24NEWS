@@ -5,7 +5,7 @@ import os
 import math
 
 # ==========================================
-# 1. הגדרת עמוד והזרקת עיצוב Material Design RTL קשיח
+# 1. הגדרת עמוד והזרקת עיצוב מתוקן (RTL + Sticky + Wrap)
 # ==========================================
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
@@ -13,7 +13,7 @@ st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;700&display=swap');
         
-        /* יישור RTL גורף לחלוטין לכל המערכת */
+        /* יישור RTL גורף */
         .stApp, .stApp * {
             direction: rtl !important;
             text-align: right !important;
@@ -22,6 +22,11 @@ st.markdown("""
         
         .stApp {
             background-color: #f8f9fa !important;
+        }
+        
+        /* פתרון בעיית הסטיקי: דריסה של חסימות Streamlit */
+        div[data-testid="stMain"] > div {
+            overflow: visible !important;
         }
         
         /* כרטיסים לבנים נקיים */
@@ -33,16 +38,16 @@ st.markdown("""
             box-shadow: 0px 2px 1px -1px rgba(0,0,0,0.05), 0px 1px 1px 0px rgba(0,0,0,0.03), 0px 1px 3px 0px rgba(0,0,0,0.03) !important;
         }
         
-        /* כרטיס סינון נתונים סטיקי קבוע בראש העמוד בגלילה */
+        /* קיבוע הכרטיס הראשון (הפילטרים) בגלילה */
         div[data-testid="stVerticalBlockBorderWrapper"]:first-of-type {
+            position: -webkit-sticky !important;
             position: sticky !important;
-            top: 0px !important;
+            top: 2.875rem !important; /* ממקם את זה בדיוק מתחת לסרגל העליון של סטרים ליט */
             z-index: 99999 !important;
             background-color: rgba(255, 255, 255, 0.98) !important;
             backdrop-filter: blur(8px);
             padding: 12px 24px !important;
             border-bottom: 1px solid #e8eaed !important;
-            box-shadow: 0px 4px 12px rgba(0,0,0,0.05) !important;
         }
         
         h2 {
@@ -59,7 +64,7 @@ st.markdown("""
             box-shadow: none !important;
         }
         
-        /* תיקון: הקטנת הטקסט של השאלות ל-14px למראה נקי ומקצועי */
+        /* שאלות תפריט הצד - גודל 14px */
         div[data-testid="stRadio"] label {
             padding: 8px 12px !important;
             border-radius: 8px !important;
@@ -74,8 +79,8 @@ st.markdown("""
             background-color: #f1f3f4 !important; 
         }
         
-        /* כותרות ראשיות אחידות בגודל 1.25em */
-        .unified-title {
+        /* כותרות הפילטרים בשורה אחת */
+        .filter-title {
             font-size: 1.25em !important;
             font-weight: 700 !important;
             color: #202124 !important;
@@ -83,13 +88,25 @@ st.markdown("""
             display: flex;
             align-items: center;
             height: 100%;
-            white-space: nowrap;
+            white-space: nowrap !important;
         }
         
-        /* תיקון: העברת הכותרות של התיבות הנפתחות לצד ימין של התיבה (Inline) */
+        /* פתרון בעיית חריגת הטקסט של השאלה: מעבר שורות נקי */
+        .question-title {
+            font-size: 1.25em !important;
+            font-weight: 700 !important;
+            color: #202124 !important;
+            margin-bottom: 25px !important;
+            line-height: 1.5 !important;
+            white-space: normal !important; 
+            word-wrap: break-word !important;
+            display: block !important;
+        }
+        
+        /* כותרות התיבות מימין אליהן */
         div[data-testid="stSelectbox"] {
             display: flex !important;
-            flex-direction: row !important; /* ב-RTL הפריט הראשון יהיה בימין הקיצוני */
+            flex-direction: row !important;
             align-items: center !important;
             gap: 10px !important;
             width: 100% !important;
@@ -111,7 +128,7 @@ st.markdown("""
             width: 100% !important;
         }
         
-        /* יישור רשימות הבחירה הנפתחות לימין */
+        /* יישור הרשימות הנפתחות */
         div[data-baseweb="select"] *, div[data-testid="stSelectbox"] * {
             text-align: right !important;
             direction: rtl !important;
@@ -121,12 +138,10 @@ st.markdown("""
             text-align: right !important;
         }
         
-        /* תיקון: חסימת אפשרות הקלדה/כתיבה בתיבות "ימי מדידה" ו"גל מחקר" בלבד */
-        div[data-testid="column"]:nth-of-type(2) div[data-baseweb="select"] input,
-        div[data-testid="column"]:nth-of-type(3) div[data-baseweb="select"] input {
-            pointer-events: none !important;
-            caret-color: transparent !important;
-            user-select: none !important;
+        /* פתרון מוחלט: חסימת כתיבה לתיבות ע"י העלמת סמן ההקלדה מהטור השני והשלישי */
+        div[data-testid="column"]:nth-child(2) [data-baseweb="select"] input,
+        div[data-testid="column"]:nth-child(3) [data-baseweb="select"] input {
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -145,13 +160,13 @@ df = load_data()
 st.markdown("<h2>📊 השוואת מדרוג מול סקר שילוב</h2>", unsafe_allow_html=True)
 
 # ==========================================
-# שורת סינון סטיקית באותה השורה (אחודה)
+# פילטרים
 # ==========================================
 with st.container(border=True):
     col_title, col_f1, col_f2, col_f3 = st.columns([1.0, 1.8, 2.0, 2.8], gap="medium")
     
     with col_title:
-        st.markdown("<p class='unified-title'>🎯 סינון נתונים</p>", unsafe_allow_html=True)
+        st.markdown("<p class='filter-title'>🎯 סינון נתונים</p>", unsafe_allow_html=True)
         
     with col_f1:
         selected_period = st.selectbox("ימי מדידה:", ["אמצע שבוע", "סוף שבוע"], index=0)
@@ -191,7 +206,7 @@ col_side, col_chart = st.columns([1.3, 2.5], gap="large")
 
 with col_side:
     with st.container(border=True):
-        st.markdown("<p class='unified-title' style='margin-bottom: 20px !important;'>📋 בחר שאלה לניתוח:</p>", unsafe_allow_html=True)
+        st.markdown("<p class='filter-title' style='margin-bottom: 20px !important;'>📋 בחר שאלה לניתוח:</p>", unsafe_allow_html=True)
         questions = df_filtered['question_text'].unique().tolist()
         if not questions:
             st.warning("אין נתונים זמינים לחיתוך זה.")
@@ -200,7 +215,8 @@ with col_side:
 
 with col_chart:
     with st.container(border=True):
-        st.markdown(f"<p class='unified-title' style='margin-bottom: 25px !important; line-height: 1.4;'>📋 {sel_q}</p>", unsafe_allow_html=True)
+        # שימוש במחלקה החדשה שמאפשרת ירידת שורה
+        st.markdown(f"<p class='question-title'>📋 {sel_q}</p>", unsafe_allow_html=True)
         
         plot_df = df_filtered[df_filtered['question_text'] == sel_q]
         answers = plot_df['answer_text'].drop_duplicates().tolist()
