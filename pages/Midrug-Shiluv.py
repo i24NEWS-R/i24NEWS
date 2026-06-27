@@ -6,7 +6,7 @@ import random
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# סגנון קבוע, דריסת כיווניות לתרשים, וסידור תוויות הרדיו והטקסטים
+# סגנון קבוע, דריסת כיווניות לתרשים, ויישור קפדני של תוויות הסינון לגובה התיבות
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
@@ -37,15 +37,18 @@ st.markdown("""
         margin-bottom: 10px;
     }
     
-    /* יישור תוויות הטקסט באזור הפילטרים לגובה התיבות הנפתחות */
-    .filter-label {
+    /* יישור קונטיינר הפילטרים כך שיהיו בדיוק באותו גובה שורה */
+    div[data-testid="column"] {
         display: flex;
         align-items: center;
-        height: 100%;
+    }
+    
+    .filter-label {
         font-size: 14px;
         font-weight: 600;
         color: #374151;
-        margin-bottom: 0 !important;
+        white-space: nowrap;
+        margin-left: 10px;
     }
 
     /* דריסת כיווניות עבור אזור התרשים בלבד למניעת בריחת טקסטים */
@@ -68,19 +71,19 @@ def load_data():
 df = load_data()
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
-# אזור הפילטרים - שימוש ב-markdown עם קלאס ייעודי לשמירה על גובה שורה אחיד מול ה-selectbox
+# אזור הפילטרים - שימוש ב-markdown עטוף בקלאס אלמנטרי שמתיישר יחד עם האלמנט באותה עמודה
 with st.container(border=True):
-    cols = st.columns([1.8, 1.2, 2.2, 1, 2.2, 1.5, 3])
+    cols = st.columns([1.5, 0.9, 2.2, 0.9, 2.2, 1.2, 3])
     cols[0].markdown("### 🎯 סינון נתונים")
     
-    cols[1].markdown('<div class="filter-label">ימי מדידה:</div>', unsafe_allow_html=True)
+    cols[1].markdown('<span class="filter-label">ימי מדידה:</span>', unsafe_allow_html=True)
     sel_p = cols[2].selectbox("", ["אמצע שבוע", "סוף שבוע"], label_visibility="collapsed")
     
-    cols[3].markdown('<div class="filter-label">גל מחקר:</div>', unsafe_allow_html=True)
+    cols[3].markdown('<span class="filter-label">גל מחקר:</span>', unsafe_allow_html=True)
     waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
     sel_w = cols[4].selectbox("", waves, index=2, label_visibility="collapsed")
     
-    cols[5].markdown('<div class="filter-label">פילוח דמוגרפי:</div>', unsafe_allow_html=True)
+    cols[5].markdown('<span class="filter-label">פילוח דמוגרפי:</span>', unsafe_allow_html=True)
     if sel_w == "חיבור שני הגלים":
         opts = df[df['wave'] == "חיבור שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
         sel_d = cols[6].selectbox("", opts, index=list(opts).index("כללי") if "כללי" in opts else 0, label_visibility="collapsed")
@@ -91,7 +94,7 @@ with st.container(border=True):
 
 df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
 
-# אזור התצוגה - תפריט לצד גרף (רווח צומצם למינימום באמצעות שינוי ה-gap והגדלים)
+# אזור התצוגה - תפריט לצד גרף 
 q_list = df_f['question_text'].unique().tolist()
 if not q_list: 
     st.warning("אין נתונים עבור הסינון שנבחר.")
