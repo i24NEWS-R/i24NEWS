@@ -136,55 +136,30 @@ with chart_col:
             if table_data:
                 st.markdown("##### עד כמה הנתונים נמוכים/גבוהים ביחס למדרוג")
                 
-                # יצירת טבלת HTML עם יישור מלא למרכז באמצעות CSS
-                html_table = """
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; margin-bottom: 20px;">
-                        <thead>
-                            <tr style="background-color: #f3f4f6; border-bottom: 2px solid #e5e7eb;">
-                """
+                # יצירת DataFrame ממילון הפערים
+                df_diff = pd.DataFrame(table_data, index=['']).T
                 
-                # שורה 1: התשובות
-                for ans in table_data.keys():
-                    html_table += f"""
-                                <th style="padding: 12px; text-align: center; font-weight: bold; color: #374151; border: 1px solid #e5e7eb;">
-                                    {ans}
-                                </th>
-                    """
-                
-                html_table += """
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr style="background-color: #ffffff; border-bottom: 1px solid #e5e7eb;">
-                """
-                
-                # שורה 2: הפערים עם צבעים
-                for val in table_data.values():
+                # פונקציית עיצוב צבעים מותנית ליישור למרכז
+                def color_diff(val):
                     if val > 0:
-                        color_style = "color: green; font-weight: bold;"
-                        val_str = f"+{val:.1f}%"
+                        return 'color: green; font-weight: bold; text-align: center;'
                     elif val < 0:
-                        color_style = "color: red; font-weight: bold;"
-                        val_str = f"{val:.1f}%"
-                    else:
-                        color_style = "color: black; font-weight: bold;"
-                        val_str = f"{val:.1f}%"
-                        
-                    html_table += f"""
-                                <td style="padding: 12px; text-align: center; {color_style} border: 1px solid #e5e7eb;">
-                                    {val_str}
-                                </td>
-                    """
-                    
-                html_table += """
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                """
+                        return 'color: red; font-weight: bold; text-align: center;'
+                    return 'color: black; font-weight: bold; text-align: center;'
+
+                # פונקציה להצגת האחוזים עם סימן פלוס/מינוס
+                def format_diff(val):
+                    return f"+{val:.1f}%" if val > 0 else f"{val:.1f}%"
+
+                # החלת העיצוב על התאים בטבלה
+                styled_table = df_diff.style.map(color_diff).format(format_diff)
                 
-                st.markdown(html_table, unsafe_allow_html=True)
+                # הצגת הטבלה המעוצבת והממורכזת
+                st.dataframe(
+                    styled_table, 
+                    use_container_width=True,
+                    hide_index=False
+                )
                 st.write("")
             # --------------------------------------------------------
             
