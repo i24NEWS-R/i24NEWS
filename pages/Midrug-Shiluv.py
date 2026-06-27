@@ -130,12 +130,13 @@ with chart_col:
                     diff = m_v - s_v
                     table_data.append((ans, diff))
 
-            # --- בניית התרשים האופקי הראשי ---
+            # --- בניית התרשים האנכי ---
             fig = go.Figure()
             
             # עטיפת התשובות כך שיפרסו 100% לרוחב ללא הגבלת פיקסלים קשיחה
             wrapped_labels = [f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{lbl}</span>" for lbl in labels]
             
+            # שרטוט הקווים המחברים (אנכיים) רק לתשובות שקיימות בשני המקורות
             for i, ans in enumerate(labels):
                 s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
                 m_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]
@@ -145,7 +146,7 @@ with chart_col:
                 
                 if s_v is not None and m_v is not None:
                     fig.add_trace(go.Scatter(
-                        x=[m_v, s_v], y=[wrapped_labels[i], wrapped_labels[i]], mode="lines", 
+                        x=[wrapped_labels[i], wrapped_labels[i]], y=[m_v, s_v], mode="lines", 
                         line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"
                     ))
             
@@ -156,83 +157,87 @@ with chart_col:
                     row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == source_filter)]
                     val = row['percentage'].values[0] if not row.empty else None
                     
-                    if val is not None:
-                        val = round(val, 1)
+                    s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else None
+                    m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else None
                     
-                    x_vals.append(val)
-                    y_vals.append(wrapped_labels[i])
-                    
-                    if val is not None:
+                    if s_val is not None and m_val is not None:
+                        if val is not None:
+                            val = round(val, 1)
+                        
+                        x_vals.append(wrapped_labels[i])
+                        y_vals.append(val)
+                        
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
                         txt_vals.append(f"<b>{val}%</b>")
                         
-                        s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else None
-                        m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else None
+                        s_val = round(s_val, 1)
+                        m_val = round(m_val, 1)
                         
-                        if s_val is not None and m_val is not None:
-                            s_val = round(s_val, 1)
-                            m_val = round(m_val, 1)
-                            
-                            if s_val == m_val:
-                                rand_pos = random.choice(["middle left", "middle right"])
-                                if source_filter == "שילוב":
-                                    txt_pos.append(rand_pos)
-                                else:
-                                    txt_pos.append("middle right" if rand_pos == "middle left" else "middle left")
-                            elif val < min(s_val, m_val) or val == min(s_val, m_val):
-                                txt_pos.append("middle left")
+                        if s_val == m_val:
+                            if source_filter == "שילוב":
+                                txt_pos.append("top center")
                             else:
-                                txt_pos.append("middle right")
+                                txt_pos.append("bottom center")
+                        elif val < min(s_val, m_val) or val == min(s_val, m_val):
+                            txt_pos.append("bottom center")
                         else:
-                            txt_pos.append("middle right")
-                    else:
-                        hover_vals.append("")
-                        txt_vals.append("")
-                        txt_pos.append("middle center")
-                        
+                            txt_pos.append("top center")
+                            
                 color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
-                fig.add_trace(go.Scatter(
-                    x=x_vals, y=y_vals, mode="markers+text", name=source_name,
-                    marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
-                    text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
-                    textposition=txt_pos, hovertemplate=hover_vals
-                ))
+                if x_vals:
+                    fig.add_trace(go.Scatter(
+                        x=x_vals, y=y_vals, mode="markers+text", name=source_name,
+                        marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
+                        text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
+                        textposition=txt_pos, hovertemplate=hover_vals
+                    ))
 
             add_points('שילוב', 'סקר שילוב')
             add_points('מדרוג', 'הוועדה למדרוג')
 
-            v_all = plot_df['percentage'].dropna().tolist()
-            mx = max(v_all, default=100)
+            # חישוב דינמי של התקרה
+            all_plotted_values = []
+            for trace in fig.data:
+                if trace.y:
+                    valid_y = [val for val in trace.y if val is not None and val >= 0]
+                    if valid_y:
+                        all_plotted_values.extend(valid_y)
+            
+            true_max = max(all_plotted_values, default=100)
+            my = true_max * 1.15
             
             fig.update_layout(
-                margin=dict(l=80, r=80, t=60, b=100), 
+                margin=dict(l=20, r=20, t=20, b=20), # שוליים צדדיים מורחבים לפריסה מלאה ב-100% רוחב
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)',
-                height=max(450, len(labels)*75),
+                height=380, 
                 legend=dict(
                     orientation="h", 
-                    y=1.25,
+                    y=1.1, 
                     x=0.5, 
-                    xanchor="center"
+                    xanchor="center",
+                    yanchor="top"
                 ),
                 xaxis=dict(
-                    side="top", 
-                    range=[-10, mx * 1.3],
-                    showgrid=True, 
-                    gridcolor="#f3f4f6", 
-                    zeroline=False, 
-                    ticksuffix="%"
+                    side="bottom",
+                    showticklabels=False,
+                    showgrid=False,
+                    zeroline=False
                 ),
                 yaxis=dict(
                     side="left", 
-                    categoryorder="array", 
-                    categoryarray=wrapped_labels[::-1],
-                    tickfont=dict(size=12, weight="bold")
+                    range=[-2, my],
+                    showticklabels=False, 
+                    showgrid=True,
+                    gridcolor="#f3f4f6",
+                    zeroline=False
                 )
             )
+            
+            # הצגת התרשים
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            # --- הזרקת טבלת HTML (מתחת לתרשים הראשי) ---
+            # --- הזרקת טבלת HTML (מתחת לתרשים) ---
             if table_data:
                 col_count = len(table_data)
                 
@@ -301,26 +306,30 @@ with chart_col:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
 
 # ==============================================================================
-# --- כרטיס חדש: טבלה משמאל ותרשים מוטה צירים מימין (מוצג רק בערוצי i24 ובממוצע גלים) ---
+# --- כרטיס חדש: תרשים ממוקד i24news לפי פילוחים דמוגרפיים (מוצג רק בממוצע גלים) ---
 # ==============================================================================
+# בדיקה האם קיימת לפחות תשובה אחת שמכילה את המחרוזת "i24"
 has_i24 = any("i24" in ans for ans in labels)
 
 if sel_w == "ממוצע שני הגלים" and has_i24:
-    st.write("") 
+    st.write("") # מרווח קל בין הקונטיינרים
     with chart_col:
         with st.container(border=True):
-            st.markdown(f"<p style='font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:4px;'>{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; פילוח דמוגרפי (i24news)</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:12px; font-weight:bold; color:#6b7280; margin-bottom:4px;'>{sel_p} &nbsp; &gt; &nbsp; {sel_w} &nbsp; &gt; &nbsp; פילוח דמוגרפי</p>", unsafe_allow_html=True)
             
+            # איתור השם המלא המדויק של התשובה שמכילה i24 לצורך שליפת הנתונים
             i24_answer_text = next((ans for ans in labels if "i24" in ans), None)
-            st.markdown(f"<h3>{sel_q} &nbsp;–&nbsp; i24news</h3>", unsafe_allow_html=True)
+            
+            st.markdown(f"<h3>{sel_q} &nbsp;–&nbsp; {i24_answer_text}</h3>", unsafe_allow_html=True)
             st.write("")
             
-            # איסוף נתונים דמוגרפיים עבור i24news
+            # סינון הדמוגרפיות שבהן קיימת התשובה המכילה i24
             demo_table_data = []
-            demo_wrapped_labels = []
+            demo_x_vals = []
             demo_y_s_vals = []
             demo_y_m_vals = []
             
+            # רצים על כלל הפילוחים הדמוגרפיים הזמינים ב"ממוצע שני הגלים"
             all_demo_opts = df[df['wave'] == "ממוצע שני הגלים"].apply(
                 lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", 
                 axis=1
@@ -332,6 +341,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                 else:
                     d_cat, d_val = demo_opt.split(" - ", 1)
                     
+                # שליפת הנתונים לסינון הנוכחי עבור השאלה ועבור התשובה המדויקת
                 demo_df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == d_cat) & (df['demo_value'] == d_val)]
                 demo_plot_df = demo_df_f[(demo_df_f['question_text'] == sel_q) & (demo_df_f['answer_text'] == i24_answer_text)]
                 
@@ -345,141 +355,128 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                     if s_v is not None and m_v is not None:
                         diff_val = m_v - s_v
                         demo_table_data.append((demo_opt, diff_val))
-                        demo_wrapped_labels.append(f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{demo_opt}</span>")
+                        
+                        demo_x_vals.append(f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{demo_opt}</span>")
                         demo_y_s_vals.append(round(s_v, 1))
                         demo_y_m_vals.append(round(m_v, 1))
 
-            if demo_table_data:
-                # פיצול לעמודות: טבלה צמודה משמאל, ותרשים מותאם מימין
-                t_side, c_side = st.columns([1, 2.5])
+            if demo_x_vals:
+                fig_demo = go.Figure()
                 
-                with t_side:
-                    # בניית טבלת LTR עם שוליים מצומצמים (20-20) ורוחב מלא
-                    demo_html = """
-                    <style>
-                        .demo-table {
-                            width: 100% !important;
-                            border-collapse: collapse !important;
-                            font-family: inherit !important;
-                            direction: ltr !important;
-                            margin-top: 0px !important;
-                            margin-bottom: 20px !important;
-                        }
-                        .demo-th, .demo-td {
-                            border: 1px solid #e5e7eb !important;
-                            padding: 12px 6px !important;
-                            text-align: center !important;
-                            vertical-align: middle !important;
-                            direction: ltr !important;
-                            box-sizing: border-box !important;
-                        }
-                        .demo-th {
-                            background-color: #f3f4f6 !important;
-                            font-weight: bold !important;
-                            color: #1f2937 !important;
-                            font-size: 13px !important;
-                        }
-                        .d-pos { color: green !important; font-weight: bold !important; font-size: 13px; }
-                        .d-neg { color: red !important; font-weight: bold !important; font-size: 13px; }
-                        .d-zero { color: #374151 !important; font-weight: bold !important; font-size: 13px; }
-                        .d-text { font-size: 13px !important; color: #1f2937 !important; }
-                    </style>
-                    <table class="demo-table">
-                        <thead>
-                            <tr>
-                                <th class="demo-th" style="width: 35%;">פער</th>
-                                <th class="demo-th" style="width: 65%;">דמוגרפיה</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                    """
-                    for d_lbl, d_diff in demo_table_data:
-                        if d_diff > 0:
-                            val_str = f"+{d_diff:.1f}%"
-                            val_class = "d-pos"
-                        elif d_diff < 0:
-                            val_str = f"{d_diff:.1f}%"
-                            val_class = "d-neg"
-                        else:
-                            val_str = f"{d_diff:.1f}%"
-                            val_class = "d-zero"
-                            
-                        demo_html += f"""
-                            <tr>
-                                <td class="demo-td {val_class}">{val_str}</td>
-                                <td class="demo-td d-text">{d_lbl}</td>
-                            </tr>
-                        """
-                    demo_html += "</tbody></table>"
-                    st.markdown(demo_html, unsafe_allow_html=True)
-                    
-                with c_side:
-                    fig_demo = go.Figure()
-                    
-                    # הפוך כיוון צירים (היפוך תפקידים X ו־Y) - התשובות עולות למעלה, והדמוגרפיות למטה
-                    # (תרשים אנכי מדויק)
-                    for idx, demo_lbl in enumerate(demo_wrapped_labels):
-                        fig_demo.add_trace(go.Scatter(
-                            x=[demo_lbl, demo_lbl], y=[demo_y_m_vals[idx], demo_y_s_vals[idx]], mode="lines", 
-                            line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"
-                        ))
-
+                # קווים מקשרים בין שילוב למדרוג עבור כל דמוגרפיה
+                for idx, demo_lbl in enumerate(demo_x_vals):
                     fig_demo.add_trace(go.Scatter(
-                        x=demo_wrapped_labels, y=demo_y_s_vals, mode="markers+text", name="סקר שילוב",
-                        marker=dict(color='#2563eb', size=14, line=dict(color='white', width=2)),
-                        text=[f"<b>{val}%</b>" for val in demo_y_s_vals],
-                        textfont=dict(size=12, color='#2563eb', weight="bold"),
-                        textposition=[
-                            "top center" if demo_y_s_vals[idx] >= demo_y_m_vals[idx] else "bottom center" 
-                            for idx in range(len(demo_wrapped_labels))
-                        ],
-                        hovertemplate="<b>סקר שילוב</b><br>אחוז: %{y}%<extra></extra>"
+                        x=[demo_lbl, demo_lbl], y=[demo_y_m_vals[idx], demo_y_s_vals[idx]], mode="lines", 
+                        line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"
                     ))
 
-                    fig_demo.add_trace(go.Scatter(
-                        x=demo_wrapped_labels, y=demo_y_m_vals, mode="markers+text", name="הוועדה למדרוג",
-                        marker=dict(color='#ea580c', size=14, line=dict(color='white', width=2)),
-                        text=[f"<b>{val}%</b>" for val in demo_y_m_vals],
-                        textfont=dict(size=12, color='#ea580c', weight="bold"),
-                        textposition=[
-                            "bottom center" if demo_y_m_vals[idx] <= demo_y_s_vals[idx] else "top center" 
-                            for idx in range(len(demo_wrapped_labels))
-                        ],
-                        hovertemplate="<b>הוועדה למדרוג</b><br>אחוז: %{y}%<extra></extra>"
-                    ))
+                # הוספת הנקודות לשילוב
+                fig_demo.add_trace(go.Scatter(
+                    x=demo_x_vals, y=demo_y_s_vals, mode="markers+text", name="סקר שילוב",
+                    marker=dict(color='#2563eb', size=14, line=dict(color='white', width=2)),
+                    text=[f"<b>{val}%</b>" for val in demo_y_s_vals],
+                    textfont=dict(size=12, color='#2563eb', weight="bold"),
+                    textposition=[
+                        "top center" if demo_y_s_vals[idx] >= demo_y_m_vals[idx] else "bottom center" 
+                        for idx in range(len(demo_x_vals))
+                    ],
+                    hovertemplate="<b>סקר שילוב</b><br>אחוז: %{y}%<extra></extra>"
+                ))
 
-                    all_demo_values = demo_y_s_vals + demo_y_m_vals
-                    demo_max = max(all_demo_values, default=100)
-                    my_demo = demo_max * 1.15
+                # הוספת הנקודות למדרוג
+                fig_demo.add_trace(go.Scatter(
+                    x=demo_x_vals, y=demo_y_m_vals, mode="markers+text", name="הוועדה למדרוג",
+                    marker=dict(color='#ea580c', size=14, line=dict(color='white', width=2)),
+                    text=[f"<b>{val}%</b>" for val in demo_y_m_vals],
+                    textfont=dict(size=12, color='#ea580c', weight="bold"),
+                    textposition=[
+                        "bottom center" if demo_y_m_vals[idx] <= demo_y_s_vals[idx] else "top center" 
+                        for idx in range(len(demo_x_vals))
+                    ],
+                    hovertemplate="<b>הוועדה למדרוג</b><br>אחוז: %{y}%<extra></extra>"
+                ))
 
-                    # שוליים רוחביים מלאים 20-20 המשתרעים ב-100% רוחב
-                    fig_demo.update_layout(
-                        margin=dict(l=20, r=20, t=20, b=20), 
-                        paper_bgcolor='rgba(0,0,0,0)', 
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        # גובה התרשים מותאם דינמית לכמות הפילוחים הדמוגרפיים המופיעים בפועל 
-                        height=max(250, len(demo_table_data) * 45), 
-                        legend=dict(
-                            orientation="h", 
-                            y=1.2, 
-                            x=0.5, 
-                            xanchor="center",
-                            yanchor="top"
-                        ),
-                        xaxis=dict(
-                            side="bottom",
-                            showticklabels=False,
-                            showgrid=False,
-                            zeroline=False
-                        ),
-                        yaxis=dict(
-                            side="left", 
-                            range=[-2, my_demo],
-                            showticklabels=False, 
-                            showgrid=True,
-                            gridcolor="#f3f4f6",
-                            zeroline=False
-                        )
+                # חישוב תקרה דינמית לתרשים הדמוגרפיות
+                all_demo_values = demo_y_s_vals + demo_y_m_vals
+                demo_max = max(all_demo_values, default=100)
+                my_demo = demo_max * 1.15
+
+                fig_demo.update_layout(
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    paper_bgcolor='rgba(0,0,0,0)', 
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    height=380, 
+                    legend=dict(
+                        orientation="h", 
+                        y=1.1, 
+                        x=0.5, 
+                        xanchor="center",
+                        yanchor="top"
+                    ),
+                    xaxis=dict(
+                        side="bottom",
+                        showticklabels=False,
+                        showgrid=False,
+                        zeroline=False
+                    ),
+                    yaxis=dict(
+                        side="left", 
+                        range=[-2, my_demo],
+                        showticklabels=False, 
+                        showgrid=True,
+                        gridcolor="#f3f4f6",
+                        zeroline=False
                     )
+                )
 
-                    st.plotly_chart(fig_demo, use_container_width=True, config={'displayModeBar': False})
+                st.plotly_chart(fig_demo, use_container_width=True, config={'displayModeBar': False})
+
+                # --- טבלת פירוט לפילוחים הדמוגרפיים של הערוץ ---
+                demo_col_count = len(demo_table_data)
+                demo_html = f"""
+                <style>
+                    .demo-table {{
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        margin-top: 15px !important;
+                        margin-bottom: 10px !important;
+                        font-family: inherit !important;
+                        direction: ltr !important;
+                    }}
+                    .demo-th, .demo-td {{
+                        border: 1px solid #e5e7eb !important;
+                        padding: 12px 8px !important;
+                        text-align: center !important;
+                        vertical-align: middle !important;
+                        direction: ltr !important;
+                        width: calc(100% / {demo_col_count}) !important;
+                        box-sizing: border-box !important;
+                    }}
+                    .demo-th {{
+                        background-color: #f3f4f6 !important;
+                        font-weight: bold !important;
+                        color: #1f2937 !important;
+                        font-size: 14px !important;
+                    }}
+                    .d-pos {{ color: green !important; font-weight: bold !important; }}
+                    .d-neg {{ color: red !important; font-weight: bold !important; }}
+                    .d-zero {{ color: #374151 !important; font-weight: bold !important; }}
+                </style>
+                <table class="demo-table">
+                    <thead>
+                        <tr>
+                """
+                for d_lbl, _ in demo_table_data:
+                    demo_html += f'<th class="demo-th">{d_lbl}</th>'
+                demo_html += "</tr></thead><tbody><tr>"
+                
+                for _, d_diff in demo_table_data:
+                    if d_diff > 0:
+                        demo_html += f'<td class="demo-td d-pos">+{d_diff:.1f}%</td>'
+                    elif d_diff < 0:
+                        demo_html += f'<td class="demo-td d-neg">{d_diff:.1f}%</td>'
+                    else:
+                        demo_html += f'<td class="demo-td d-zero">{d_diff:.1f}%</td>'
+                        
+                demo_html += "</tr></tbody></table>"
+                st.markdown(demo_html, unsafe_allow_html=True)
