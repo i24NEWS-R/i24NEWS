@@ -4,7 +4,6 @@ import plotly.graph_objects as go
 import os
 import random
 
-st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
 # סגנון קבוע, דריסת כיווניות לתרשים וריווח אפשרויות הרדיו
 st.markdown("""
