@@ -283,7 +283,7 @@ with chart_col:
                 showlegend=True,
                 legend=dict(
                     orientation="h", 
-                    y=-0.1, 
+                    y=-0, 
                     x=0.5, 
                     xanchor="center",
                     font=dict(size=11)
