@@ -230,7 +230,7 @@ with chart_col:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
 
 # ==============================================================================
-# --- כרטיס תרשים נתח שוק (SOV) מוערם 100% – מוקשה מול CSS גלובלי ---
+# --- כרטיס תרשים נתח שוק (SOV) מוערם 100% – טקסט ממורכז בצורה תקנית ---
 # ==============================================================================
 target_channels = ["ערוץ כאן 11", "ערוץ קשת 12", "ערוץ רשת 13", "ערוץ עכשיו 14", "ערוץ i24news (אפיק 15)"]
 channel_colors = {
@@ -266,9 +266,6 @@ if len(available_channels) > 1:
                     for i, channel in enumerate(available_channels):
                         normalized_share = (channel_values[i] / sum_5_channels) * 100
                         
-                        # עטיפת טקסט ב-HTML כדי לבטל את ה-CSS הגלובלי ולמרכז מולו את הפונט
-                        label_html = f"<div style='direction: ltr; text-align: center; width: 100%;'><b>{normalized_share:.1f}%</b></div>"
-                        
                         fig_sov.add_trace(go.Bar(
                             name=channel,
                             legendgroup=channel,
@@ -281,11 +278,11 @@ if len(available_channels) > 1:
                                 line=dict(color='white', width=2)
                             ),
                             hovertemplate=f"{channel}<br>נתח מתוך הברודקאסט: %{{x:.1f}}%<extra></extra>",
-                            # מוצג באמצעות תגית ה-HTML הממורכזת שהוגדרה למעלה
-                            text=label_html if normalized_share > 4.5 else "", 
+                            # שימוש בערך מספרי רגיל, פלוטלי ידאג למיקום האופקי והאנכי
+                            text=f"{normalized_share:.1f}%" if normalized_share > 4.5 else "", 
                             textposition='inside',
-                            # ה-text מחזיק HTML ולכן נדרש שימוש ב-insidetextanchor="middle" ליישור גיאומטרי
-                            insidetextanchor="middle"
+                            insidetextanchor="middle",
+                            textfont=dict(color="white", weight="bold", size=12)
                         ))
             
             fig_sov.update_layout(
