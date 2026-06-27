@@ -9,7 +9,6 @@ st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילו
 st.markdown("""
 <style>
     * { direction: rtl!important; text-align: right!important; }
-    h3 {margin-bottom:15px!important;}
     .stRadio label div[data-testid="stMarkdownContainer"] p { font-size: 15px !important; }
     .stRadio label { padding: 15px 0 !important; border-bottom: 1px solid #f3f4f6; display: flex !important; align-items: center !important; flex-direction: row !important; justify-content: flex-start !important; }
     .stRadio label input[type="radio"] { margin-left: 0 !important; margin-right: 5px !important; }
@@ -34,15 +33,16 @@ df = load_data()
 menu_col, chart_col = st.columns([1, 5], gap="small")
 
 with menu_col:
-
     #########################################
     # תפריט צדדי - סינון נתונים
     #########################################
     with st.container(border=True):
         st.markdown("### 📺 סינון נתונים")
+        st.write("")
         sel_p = st.selectbox("ימי מדידה", ["אמצע שבוע", "סוף שבוע"])
         waves = ["גל 19 במאי", "גל 25 במאי", "ממוצע שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "ממוצע שני הגלים"]
         sel_w = st.selectbox("גל מחקר", waves, index=2)
+        
         if sel_w == "ממוצע שני הגלים":
             opts = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
             sel_d = st.selectbox("פילוח דמוגרפי:", opts, index=list(opts).index("כללי") if "כללי" in opts else 0)
@@ -50,6 +50,7 @@ with menu_col:
         else:
             st.selectbox("פילוח דמוגרפי", ["כללי (זמין רק בבחירת ממוצע שני הגלים ביחד)"], disabled=True)
             cat, val = "כללי", "סהכ"
+
     df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
     q_list = df_f['question_text'].unique().tolist()
     if not q_list: 
@@ -61,51 +62,105 @@ with menu_col:
     #########################################
     with st.container(border=True):
         st.markdown("### 📋 בחירת שאלה")
+        st.write("")
         sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
-        
+
 plot_df = df_f[df_f['question_text'] == sel_q]
 labels = plot_df['answer_text'].drop_duplicates().tolist()
 
 with chart_col:
-
     #########################################
     # כרטיס ראשון - סקר מול מדרוג: תרשים
     #########################################
     with st.container(border=True):
         if labels:
             st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
+            st.write("")
+            
             table_data = []
-            fig = go.Figure()
             for ans in labels:
                 s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
                 m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
                 if len(s_val) and len(m_val):
                     table_data.append((ans, m_val[0] - s_val[0]))
-                    fig.add_trace(go.Scatter(x=[ans, ans], y=[m_val[0], s_val[0]], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
+
+            fig = go.Figure()
+            wrapped_labels = [f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{lbl}</span>" for lbl in labels]
+            
+            for i, ans in enumerate(labels):
+                s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
+                m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
+                if len(s_val) and len(m_val):
+                    fig.add_trace(go.Scatter(x=[wrapped_labels[i], wrapped_labels[i]], y=[m_val[0], s_val[0]], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
             
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
-                for ans in labels:
+                
+                for i, ans in enumerate(labels):
                     r_s = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
                     r_m = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
                     r_src = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == source_filter)]['percentage'].values
+                    
                     if len(r_s) and len(r_m) and len(r_src):
                         s, m, val = round(r_s[0], 1), round(r_m[0], 1), round(r_src[0], 1)
-                        x_vals.append(ans); y_vals.append(val)
+                        x_vals.append(wrapped_labels[i]); y_vals.append(val)
                         hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
                         txt_vals.append(f"<b>{val}%</b>")
                         txt_pos.append("top center" if s == m else "bottom center" if val <= min(s, m) else "top center")
+                        
                 if x_vals:
-                    fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode="markers+text", name=source_name, marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)), text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"), textposition=txt_pos, hovertemplate=hover_vals))
+                    fig.add_trace(go.Scatter(
+                        x=x_vals, y=y_vals, mode="markers+text", name=source_name,
+                        marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
+                        text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
+                        textposition=txt_pos, hovertemplate=hover_vals
+                    ))
 
             add_points('שילוב', 'סקר שילוב')
             add_points('מדרוג', 'הוועדה למדרוג')
 
             all_vals = [val for trace in fig.data if trace.y for val in trace.y if val is not None and val >= 0]
             my = max(all_vals, default=100) * 1.15
-            fig.update_layout(margin=dict(l=250, r=50, t=0, b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=380, legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", yanchor="top"), xaxis=dict(side="bottom", showticklabels=False, showgrid=False, zeroline=False), yaxis=dict(side="left", range=[-1, my], showticklabels=False, showgrid=True, gridcolor="#f3f4f6", zeroline=False))
+            
+            fig.update_layout(
+                margin=dict(l=250, r=50, t=0, b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                height=380, legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", yanchor="top"),
+                xaxis=dict(side="bottom", showticklabels=False, showgrid=False, zeroline=False),
+                yaxis=dict(side="left", range=[-1, my], showticklabels=False, showgrid=True, gridcolor="#f3f4f6", zeroline=False)
+            )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            
+            #########################################
+            # כרטיס ראשון - סקר מול מדרוג: טבלה
+            #########################################
+            if table_data:
+                col_count = len(table_data) + 1 
+                all_diffs = [diff for _, diff in table_data]
+                mean_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
+                
+                html_code = f'<table class="custom-table"><thead><tr>'
+                html_code += f'<th class="custom-th">פרמטר</th>' 
+                for ans, _ in table_data: 
+                    html_code += f'<th class="custom-th">{ans}</th>'
+                html_code += "</tr></thead><tbody>"
+                
+                html_code += "<tr>"
+                html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי אבסולוטי</td>'
+                for _, diff in table_data:
+                    cls = "pos-val" if diff > 0 else "neg-val" if diff < 0 else "zero-val"
+                    html_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
+                html_code += "</tr>"
+                
+                html_code += "<tr>"
+                html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי מחושב</td>'
+                for _, diff in table_data:
+                    adj_diff = diff - mean_diff
+                    cls = "pos-val" if adj_diff > 0 else "neg-val" if adj_diff < 0 else "zero-val"
+                    html_code += f'<td class="custom-td {cls}">{"+" if adj_diff > 0 else ""}{adj_diff:.1f}%</td>'
+                html_code += "</tr></tbody></table>"
+                
+                st.markdown(html_code, unsafe_allow_html=True)
         else:
             st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
 
