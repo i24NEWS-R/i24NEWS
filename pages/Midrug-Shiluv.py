@@ -13,7 +13,7 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&display=swap');
     
-    .stApp, .stApp * {
+    * {
         font-family: 'Assistant', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
