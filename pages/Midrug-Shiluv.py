@@ -45,7 +45,7 @@ with menu_col:
             sel_d = st.selectbox("פילוח דמוגרפי:", opts, index=list(opts).index("כללי") if "כללי" in opts else 0)
             cat, val = ("כללי", "סהכ") if sel_d == "כללי" else sel_d.split(" - ", 1)
         else:
-            st.selectbox("פילוח דמוגרפי:", ["כללי (זמין רק בבחירת ממוצע שני הגלים ביחד)"], disabled=True)
+            st.selectbox("פילוח דמוגרפי", ["כללי (זמין רק בבחירת ממוצע שני הגלים ביחד)"], disabled=True)
             cat, val = "כללי", "סהכ"
 
     df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
