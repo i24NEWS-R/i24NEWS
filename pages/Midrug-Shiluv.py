@@ -7,7 +7,7 @@ import math
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
 # ==========================================
-# 1. CSS מינימלי: רק פונט ויישור RTL גורף
+# 1. יישור RTL גורף (מוטמע ב-Streamlit בדרך טבעית)
 # ==========================================
 st.markdown("""
 <style>
@@ -38,31 +38,25 @@ df = load_data()
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
 # ==========================================
-# 3. אזור הפילטרים המובנה (ללא טריקים)
+# 3. אזור הפילטרים בשורה אחת אופקית (פייתון טהור)
 # ==========================================
 with st.container(border=True):
-    # פריסה אופקית של התווית הראשית ו-3 זוגות של כותרת ותיבה נפתחת
-    f_title, l1, c1, l2, c2, l3, c3 = st.columns([1.5, 1.2, 2.5, 1.2, 2.8, 1.2, 3.2], gap="small")
+    # פריסה בשורה אחת באמצעות חלוקה מדויקת של טורים
+    f_title, c1, c2, c3 = st.columns([1.5, 3.5, 3.5, 3.5], gap="medium")
     
     with f_title:
-        st.markdown("<div style='padding-top: 10px; font-weight: 700; font-size: 1.1em;'>🎯 סינון נתונים:</div>", unsafe_allow_html=True)
-
-    with l1:
-        st.markdown("<div style='padding-top: 12px; font-weight: 600; color: #5f6368; font-size: 14px;'>ימי מדידה:</div>", unsafe_allow_html=True)
-    with c1:
-        sel_period = st.selectbox("", ["אמצע שבוע", "סוף שבוע"], index=0, label_visibility="collapsed")
+        st.markdown("### 🎯 סינון נתונים")
     
-    with l2:
-        st.markdown("<div style='padding-top: 12px; font-weight: 600; color: #5f6368; font-size: 14px;'>גל מחקר:</div>", unsafe_allow_html=True)
+    with c1:
+        sel_period = st.selectbox("ימי מדידה:", ["אמצע שבוע", "סוף שבוע"], index=0)
+    
     with c2:
         if sel_period == "אמצע שבוע":
             waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"]
         else:
             waves = ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
-        sel_wave = st.selectbox("", waves, index=2, label_visibility="collapsed")
+        sel_wave = st.selectbox("גל מחקר:", waves, index=2)
     
-    with l3:
-        st.markdown("<div style='padding-top: 12px; font-weight: 600; color: #5f6368; font-size: 14px;'>פילוח דמוגרפי:</div>", unsafe_allow_html=True)
     with c3:
         if sel_wave == "חיבור שני הגלים":
             df_w = df[(df['period'] == sel_period) & (df['wave'] == sel_wave)]
@@ -71,19 +65,19 @@ with st.container(border=True):
             ).unique()
             
             default_idx = list(opts).index("כללי") if "כללי" in opts else 0
-            sel_demo = st.selectbox("", opts, index=default_idx, label_visibility="collapsed")
+            sel_demo = st.selectbox("פילוח דמוגרפי:", opts, index=default_idx)
             
             if sel_demo == "כללי":
                 cat, val = "כללי", "סהכ"
             else:
                 cat, val = sel_demo.split(" - ", 1)
         else:
-            st.selectbox("", ["כללי (זמין בחיבור הגלים)"], disabled=True, label_visibility="collapsed")
+            st.selectbox("פילוח דמוגרפי:", ["כללי (פילוח זמין בחיבור גלים)"], disabled=True)
             cat, val = "כללי", "סהכ"
 
 df_filtered = df[(df['period'] == sel_period) & (df['wave'] == sel_wave) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
 
-st.divider() # קו הפרדה פשוט ונקי
+st.divider()
 
 # ==========================================
 # 4. אזור התרשים והשאלות
@@ -92,7 +86,7 @@ col_side, col_chart = st.columns([1.3, 2.5], gap="large")
 
 with col_side:
     with st.container(border=True):
-        st.subheader("📋 בחר שאלה לניתוח:")
+        st.markdown("### 📋 בחר שאלה לניתוח:")
         questions = df_filtered['question_text'].unique().tolist()
         if not questions:
             st.warning("אין נתונים לחיתוך זה.")
@@ -101,7 +95,7 @@ with col_side:
 
 with col_chart:
     with st.container(border=True):
-        st.subheader(f"📋 {sel_q}")
+        st.markdown(f"### 📋 {sel_q}")
         
         plot_df = df_filtered[df_filtered['question_text'] == sel_q]
         labels = plot_df['answer_text'].drop_duplicates().tolist()
