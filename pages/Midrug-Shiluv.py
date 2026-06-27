@@ -30,7 +30,7 @@ def load_data():
 
 df = load_data()
 
-menu_col, chart_col = st.columns([1.1, 4.7], gap="small")
+menu_col, chart_col = st.columns([1.5, 4.5], gap="small")
 
 with menu_col:
     with st.container(border=True):
