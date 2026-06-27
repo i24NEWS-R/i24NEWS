@@ -91,7 +91,7 @@ with chart_col:
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False, hoverinfo="skip"
                     ))
             
-            # הוספת הנקודות והטקסטים (טיפול בנתון בודד וריווח ערכים הקרובים לאפס)
+            # הוספת הנקודות והטקסטים בהתאמה מלאה (הנמוך מימין לנקודה, הגבוה משמאל לנקודה, או ממורכז במקור יחיד)
             def add_points(source_filter, source_name, color, is_shiluv_source):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
@@ -109,17 +109,13 @@ with chart_col:
                         s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')].empty else -1
                         m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values[0] if not plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')].empty else -1
                         
-                        # מצב שבו קיים רק נתון אחד מבין השניים (השני לא קיים / שווה למינוס 1)
                         if s_val == -1 or m_val == -1:
                             txt_pos.append("middle right" if is_shiluv_source else "middle left")
                         else:
-                            # מרווח דינמי כשקרוב לאפס
-                            if val == min(s_val, m_val) and val < 10:
-                                txt_pos.append("middle right") 
-                            elif val == min(s_val, m_val):
-                                txt_pos.append("middle left")
-                            else:
+                            if val == min(s_val, m_val):
                                 txt_pos.append("middle right")
+                            else:
+                                txt_pos.append("middle left")
                     else:
                         hover_vals.append("")
                         txt_vals.append("")
@@ -145,14 +141,13 @@ with chart_col:
                 height=max(450, len(labels)*100),
                 legend=dict(
                     orientation="h", 
-                    y=1.15, # מקרא מעל התרשים
+                    y=1.15, # מיקום המקרא מעל התרשים
                     x=0.5, 
                     xanchor="center"
                 ),
                 xaxis=dict(
                     side="top", 
-                    # מאפשר לציר ה-X להתחיל בערך שלילי קטן (כדי שלייבלים לא ייחתכו באפס) ומקסימום מרווח
-                    range=[-(mx * 0.1), mx * 1.3], 
+                    range=[0, mx * 1.3], # ציר ה-X מתחיל מ-0 ומרווח בצורה פרופורציונלית לימין
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
