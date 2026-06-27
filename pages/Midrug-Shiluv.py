@@ -6,7 +6,7 @@ import random
 
 st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
 
-# סגנון קבוע, דריסת כיווניות לתרשים וריווח בתפריט הרדיו
+# סגנון קבוע, דריסת כיווניות לתרשים, וסידור תוויות הרדיו והטקסטים
 st.markdown("""
 <style>
     * {direction: rtl!important; text-align: right!important;}
@@ -24,12 +24,12 @@ st.markdown("""
     /* ריווח כפתור הבחירה העגול והרחקתו שמאלה מהטקסט שצמוד אליו */
     .stRadio label input[type="radio"] {
         margin-left: 0 !important;
-        margin-right: 5px !important; /* מרחק הבסיס מהקצה הימני */
+        margin-right: 5px !important;
     }
     
-    /* הוספת מרווח מפורש בין כפתור הרדיו (העיגול) לבין הטקסט בתוך הלייבל */
+    /* הוספת מרווח מפורש בין כפתור הרדיו לבין הטקסט בלייבל */
     .stRadio label div[data-testid="stMarkdownContainer"] {
-        margin-right: 15px !important; /* מרחיק את הטקסט שמאלה מהעיגול בצורה מרווחת וברורה */
+        margin-right: 15px !important;
     }
     
     /* הרחקת כותרת/נוסח השאלה מכפתור הבחירה הראשון ברשימה */
@@ -37,6 +37,17 @@ st.markdown("""
         margin-bottom: 10px;
     }
     
+    /* יישור תוויות הטקסט באזור הפילטרים לגובה התיבות הנפתחות */
+    .filter-label {
+        display: flex;
+        align-items: center;
+        height: 100%;
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0 !important;
+    }
+
     /* דריסת כיווניות עבור אזור התרשים בלבד למניעת בריחת טקסטים */
     div[data-testid="stPlotlyChart"] * {
         direction: ltr !important;
@@ -57,17 +68,19 @@ def load_data():
 df = load_data()
 st.title("📊 השוואת מדרוג מול סקר שילוב")
 
-# אזור הפילטרים - הקצאת רוחב גדולה יותר לעמודת הכותרת למניעת שבירת שורות
+# אזור הפילטרים - שימוש ב-markdown עם קלאס ייעודי לשמירה על גובה שורה אחיד מול ה-selectbox
 with st.container(border=True):
-    cols = st.columns([2.2, 1, 2.5, 1, 2.5, 1.5, 3])
+    cols = st.columns([1.8, 1.2, 2.2, 1, 2.2, 1.5, 3])
     cols[0].markdown("### 🎯 סינון נתונים")
-    cols[1].write("ימי מדידה:")
+    
+    cols[1].markdown('<div class="filter-label">ימי מדידה:</div>', unsafe_allow_html=True)
     sel_p = cols[2].selectbox("", ["אמצע שבוע", "סוף שבוע"], label_visibility="collapsed")
-    cols[3].write("גל מחקר:")
+    
+    cols[3].markdown('<div class="filter-label">גל מחקר:</div>', unsafe_allow_html=True)
     waves = ["גל 19 במאי", "גל 25 במאי", "חיבור שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "חיבור שני הגלים"]
     sel_w = cols[4].selectbox("", waves, index=2, label_visibility="collapsed")
     
-    cols[5].write("פילוח דמוגרפי:")
+    cols[5].markdown('<div class="filter-label">פילוח דמוגרפי:</div>', unsafe_allow_html=True)
     if sel_w == "חיבור שני הגלים":
         opts = df[df['wave'] == "חיבור שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
         sel_d = cols[6].selectbox("", opts, index=list(opts).index("כללי") if "כללי" in opts else 0, label_visibility="collapsed")
@@ -76,22 +89,20 @@ with st.container(border=True):
         cols[6].selectbox("", ["כללי (זמין בחיבור הגלים)"], disabled=True, label_visibility="collapsed")
         cat, val = "כללי", "סהכ"
 
-# הוסרו הקו המפריד והרווח המיותר מתחתיו
-
 df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
 
-# אזור התצוגה - תפריט לצד גרף
+# אזור התצוגה - תפריט לצד גרף (רווח צומצם למינימום באמצעות שינוי ה-gap והגדלים)
 q_list = df_f['question_text'].unique().tolist()
 if not q_list: 
     st.warning("אין נתונים עבור הסינון שנבחר.")
     st.stop()
 
-menu_col, chart_col = st.columns([1.3, 2.5], gap="large")
+menu_col, chart_col = st.columns([1.1, 2.7], gap="small")
 
 with menu_col:
     with st.container(border=True):
         st.markdown("### 📋 בחירת שאלה:")
-        st.write("") # מרווח קל בין הכותרת לכפתורי הרדיו
+        st.write("")
         sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
 
 plot_df = df_f[df_f['question_text'] == sel_q]
@@ -100,16 +111,13 @@ labels = plot_df['answer_text'].drop_duplicates().tolist()
 with chart_col:
     with st.container(border=True):
         if labels:
-            # הצגת השאלה הנבחרה מעל התרשים באותו הגודל של הכותרות בתוספת אייקון
             st.markdown(f"### 📋 {sel_q}")
             st.write("")
             
             fig = go.Figure()
             
-            # עטיפה להצגת טקסט ארוך במרווח מימין לתרשים (ללא חיתוך)
             wrapped_labels = [f"<span style='display: inline-block; width: 260px; white-space: normal; text-align: right;'>{lbl}</span>" for lbl in labels]
             
-            # קווים מקווקווים המחברים בין הנקודות
             for i, ans in enumerate(labels):
                 s_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]
                 m_row = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]
@@ -123,7 +131,6 @@ with chart_col:
                         line=dict(color="#d1d5db", width=2, dash="dot"), showlegend=False, hoverinfo="skip"
                     ))
             
-            # הוספת הנקודות והטקסטים עם עיגול לספרה עשרונית אחת ויישום הכללים
             def add_points(source_filter, source_name):
                 x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
                 
@@ -132,7 +139,7 @@ with chart_col:
                     val = row['percentage'].values[0] if not row.empty else None
                     
                     if val is not None:
-                        val = round(val, 1)  # עיגול לספרה אחת אחרי הנקודה
+                        val = round(val, 1)
                     
                     x_vals.append(val)
                     y_vals.append(wrapped_labels[i])
@@ -149,19 +156,16 @@ with chart_col:
                             m_val = round(m_val, 1)
                             
                             if s_val == m_val:
-                                # ערכים תואמים לחלוטין -> בחירה אקראית של מיקום (שמאל או ימין) כדי למנוע חפיפה
                                 rand_pos = random.choice(["middle left", "middle right"])
                                 if source_filter == "שילוב":
                                     txt_pos.append(rand_pos)
                                 else:
                                     txt_pos.append("middle right" if rand_pos == "middle left" else "middle left")
-                            # שני נתונים שונים -> הנמוך משמאל לבולט, הגבוה מימין לבולט
                             elif val < min(s_val, m_val) or val == min(s_val, m_val):
                                 txt_pos.append("middle left")
                             else:
                                 txt_pos.append("middle right")
                         else:
-                            # נתון בודד יוצג תמיד לימין הבולט
                             txt_pos.append("middle right")
                     else:
                         hover_vals.append("")
@@ -189,13 +193,13 @@ with chart_col:
                 height=max(450, len(labels)*100),
                 legend=dict(
                     orientation="h", 
-                    y=1.15, # מקרא מעל התרשים
+                    y=1.15,
                     x=0.5, 
                     xanchor="center"
                 ),
                 xaxis=dict(
                     side="top", 
-                    range=[-10, mx * 1.3], # מתחיל ממינוס 10 לתת מרווח גם כשהערך קרוב לאפס
+                    range=[-10, mx * 1.3],
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
