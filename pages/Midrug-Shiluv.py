@@ -43,6 +43,7 @@ st.title("📊 השוואת מדרוג מול סקר שילוב")
 with st.container(border=True):
     st.subheader("🎯 סינון נתונים")
     
+    # חלוקה אופקית ל-3 עמודות שוות שפותחות את התיבות זו לצד זו
     col1, col2, col3 = st.columns(3)
     
     with col1:
