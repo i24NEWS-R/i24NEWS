@@ -33,6 +33,9 @@ df = load_data()
 menu_col, chart_col = st.columns([1, 5], gap="small")
 
 with menu_col:
+    #########################################
+    # תפריט צדדי - סינון נתונים
+    #########################################
     with st.container(border=True):
         st.markdown("### 📺 סינון נתונים")
         st.write("")
@@ -54,6 +57,9 @@ with menu_col:
         st.warning("אין נתונים עבור הסינון שנבחר.")
         st.stop()
 
+    #########################################
+    # תפריט צדדי - בחירת שאלה
+    #########################################
     with st.container(border=True):
         st.markdown("### 📋 בחירת שאלה")
         st.write("")
@@ -63,6 +69,9 @@ plot_df = df_f[df_f['question_text'] == sel_q]
 labels = plot_df['answer_text'].drop_duplicates().tolist()
 
 with chart_col:
+    #########################################
+    # כרטיס ראשון - סקר מול מדרוג: תרשים
+    #########################################
     with st.container(border=True):
         if labels:
             st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
@@ -122,19 +131,20 @@ with chart_col:
             )
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
             
+            #########################################
+            # כרטיס ראשון - סקר מול מדרוג: טבלה
+            #########################################
             if table_data:
-                col_count = len(table_data) + 1  # מספר העמודות גדל ב-1 בגלל עמודת התוויות
+                col_count = len(table_data) + 1 
                 all_diffs = [diff for _, diff in table_data]
                 mean_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
                 
-                # בניית הטבלה עם עמודת תוויות נוספת מימין
                 html_code = f'<table class="custom-table"><thead><tr>'
-                html_code += f'<th class="custom-th">פרמטר</th>'  # כותרת לעמודת השורות
+                html_code += f'<th class="custom-th">פרמטר</th>' 
                 for ans, _ in table_data: 
                     html_code += f'<th class="custom-th">{ans}</th>'
                 html_code += "</tr></thead><tbody>"
                 
-                # שורה 1: שינוי אבסולוטי
                 html_code += "<tr>"
                 html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי אבסולוטי</td>'
                 for _, diff in table_data:
@@ -142,7 +152,6 @@ with chart_col:
                     html_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
                 html_code += "</tr>"
                 
-                # שורה 2: שינוי מחושב (שינוי יחסי)
                 html_code += "<tr>"
                 html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי מחושב</td>'
                 for _, diff in table_data:
@@ -164,6 +173,9 @@ with chart_col:
 
     if len(available_channels) > 1:
         st.write("")
+        #########################################
+        # כרטיס שני - נתח שוק: תרשים
+        #########################################
         with st.container(border=True):
             st.markdown("### 📊 נתח שוק יחסי מתוך ערוצי הברודקאסט")
             st.write("")
@@ -194,43 +206,48 @@ with chart_col:
             )
             st.plotly_chart(fig_sov, use_container_width=True, config={'displayModeBar': False})
 
-   # חישוב נתחי השוק והפערים עבור הטבלה השנייה
-            sov_table_data = []
-            s_data_full = plot_df[plot_df['source'] == 'שילוב']
-            m_data_full = plot_df[plot_df['source'] == 'מדרוג']
+        #########################################
+        # כרטיס שני - נתח שוק: טבלה
+        #########################################
+        sov_table_data = []
+        s_data_full = plot_df[plot_df['source'] == 'שילוב']
+        m_data_full = plot_df[plot_df['source'] == 'מדרוג']
+        
+        sum_s_vals = sum([s_data_full[s_data_full['answer_text'] == c]['percentage'].values[0] if not s_data_full[s_data_full['answer_text'] == c].empty else 0 for c in available_channels])
+        sum_m_vals = sum([m_data_full[m_data_full['answer_text'] == c]['percentage'].values[0] if not m_data_full[m_data_full['answer_text'] == c].empty else 0 for c in available_channels])
+
+        if sum_s_vals > 0 and sum_m_vals > 0:
+            for c in available_channels:
+                s_pct = s_data_full[s_data_full['answer_text'] == c]['percentage'].values[0] if not s_data_full[s_data_full['answer_text'] == c].empty else 0
+                m_pct = m_data_full[m_data_full['answer_text'] == c]['percentage'].values[0] if not m_data_full[m_data_full['answer_text'] == c].empty else 0
+                
+                s_norm = (s_pct / sum_s_vals) * 100
+                m_norm = (m_pct / sum_m_vals) * 100
+                sov_diff = m_norm - s_norm
+                sov_table_data.append((c, sov_diff))
+
+        if sov_table_data:
+            html_sov_code = f'<table class="custom-table"><thead><tr>'
+            html_sov_code += f'<th class="custom-th">פרמטר</th>'
+            for c, _ in sov_table_data:
+                html_sov_code += f'<th class="custom-th">{c}</th>'
+            html_sov_code += "</tr></thead><tbody>"
             
-            sum_s_vals = sum([s_data_full[s_data_full['answer_text'] == c]['percentage'].values[0] if not s_data_full[s_data_full['answer_text'] == c].empty else 0 for c in available_channels])
-            sum_m_vals = sum([m_data_full[m_data_full['answer_text'] == c]['percentage'].values[0] if not m_data_full[m_data_full['answer_text'] == c].empty else 0 for c in available_channels])
-
-            if sum_s_vals > 0 and sum_m_vals > 0:
-                for c in available_channels:
-                    s_pct = s_data_full[s_data_full['answer_text'] == c]['percentage'].values[0] if not s_data_full[s_data_full['answer_text'] == c].empty else 0
-                    m_pct = m_data_full[m_data_full['answer_text'] == c]['percentage'].values[0] if not m_data_full[m_data_full['answer_text'] == c].empty else 0
-                    
-                    s_norm = (s_pct / sum_s_vals) * 100
-                    m_norm = (m_pct / sum_m_vals) * 100
-                    sov_diff = m_norm - s_norm
-                    sov_table_data.append((c, sov_diff))
-
-            if sov_table_data:
-                html_sov_code = f'<table class="custom-table"><thead><tr>'
-                html_sov_code += f'<th class="custom-th">פרמטר</th>'
-                for c, _ in sov_table_data:
-                    html_sov_code += f'<th class="custom-th">{c}</th>'
-                html_sov_code += "</tr></thead><tbody>"
-                
-                html_sov_code += "<tr>"
-                html_sov_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">פער (מדרוג פחות סקר)</td>'
-                for _, diff in sov_table_data:
-                    cls = "pos-val" if diff > 0 else "neg-val" if diff < 0 else "zero-val"
-                    html_sov_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
-                html_sov_code += "</tr></tbody></table>"
-                
-                st.markdown(html_sov_code, unsafe_allow_html=True)
+            html_sov_code += "<tr>"
+            html_sov_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">פער (מדרוג פחות סקר)</td>'
+            for _, diff in sov_table_data:
+                cls = "pos-val" if diff > 0 else "neg-val" if diff < 0 else "zero-val"
+                html_sov_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
+            html_sov_code += "</tr></tbody></table>"
+            
+            st.markdown(html_sov_code, unsafe_allow_html=True)
 
     has_i24 = any("i24" in ans for ans in labels)
     if sel_w == "ממוצע שני הגלים" and has_i24:
         st.write("") 
+        #########################################
+        # כרטיס שלישי - פירוט i24 (תרשים בלבד)
+        #########################################
         with st.container(border=True):
             i24_ans = next((ans for ans in labels if "i24" in ans), None)
             st.markdown(f"### 👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news")
