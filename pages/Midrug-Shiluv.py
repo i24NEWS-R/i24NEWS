@@ -131,7 +131,7 @@ with chart_col:
                     diff = m_v - s_v
                     table_data.append((ans, diff))
             
-            # --- הזרקת טבלת HTML מעוצבת וממורכזת דרך CSS ---
+            # --- הזרקת טבלת HTML מעוצבת, ממורכזת ובכיווניות LTR ---
             if table_data:
                 st.markdown("##### עד כמה הנתונים נמוכים/גבוהים ביחס למדרוג")
                 
@@ -142,12 +142,14 @@ with chart_col:
                         border-collapse: collapse !important;
                         margin-bottom: 25px !important;
                         font-family: inherit !important;
+                        direction: ltr !important; /* דריסת כיווניות ל-LTR */
                     }
                     .custom-th, .custom-td {
                         border: 1px solid #e5e7eb !important;
                         padding: 12px 8px !important;
                         text-align: center !important;
                         vertical-align: middle !important;
+                        direction: ltr !important;
                     }
                     .custom-th {
                         background-color: #f3f4f6 !important;
