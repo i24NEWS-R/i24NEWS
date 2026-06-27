@@ -401,7 +401,7 @@ if sel_w == "ממוצע שני הגלים" and has_i24:
                     height=max(250, len(demo_table_data) * 65), # מותאם אנכית לכמות הפילוחים
                     legend=dict(
                         orientation="h", 
-                        y=1.1, 
+                        y=1.05, 
                         x=0.5, 
                         xanchor="center",
                         yanchor="top"
