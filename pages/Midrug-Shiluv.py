@@ -292,9 +292,9 @@ with chart_col:
                     x=0.5, 
                     xanchor="center"
                 ),
-                xaxis=dict(
+               xaxis=dict(
                     side="top", 
-                    range=[-10, mx * 1.3],
+                    range=[-10, mx * 1.15] if mx > 50 else [-10, mx * 1.25], 
                     showgrid=True, 
                     gridcolor="#f3f4f6", 
                     zeroline=False, 
