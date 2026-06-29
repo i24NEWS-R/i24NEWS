@@ -8,7 +8,6 @@ st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילו
 
 st.markdown("""
 <style>
-    div[data-testid="stVerticalBlock"] { background-color:#f5f7ff; border-radius:12px; }
     * { direction: rtl!important; text-align: right!important; }
     h3 {margin-bottom:15px!important;}
     .stAlert [data-testid="stMarkdownContainer"] p {font-size:0.8rem!important;}
