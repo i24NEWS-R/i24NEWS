@@ -21,6 +21,10 @@ st.markdown("""
     .pos-val { color: green !important; font-weight: bold !important; }
     .neg-val { color: red !important; font-weight: bold !important; }
     .zero-val { color: #374151 !important; font-weight: bold !important; }
+    div[data-testid="stPlotlyChart"] *, div[data-testid="stPlotlyChart"] { direction: ltr !important; text-align: left !important; unicode-bidi: isolate !important; }
+    .custom-table { width: 100% !important; border-collapse: collapse !important; margin-top: 15px !important; margin-bottom: 10px !important; font-family: inherit !important; direction: ltr !important; table-layout: fixed !important; }
+    .custom-th, .custom-td { border: 1px solid #e5e7eb !important; padding: 12px 8px !important; text-align: center !important; vertical-align: middle !important; direction: ltr !important; box-sizing: border-box !important; overflow: visible !important; word-wrap: break-word !important; white-space: normal !important; }
+
 </style>
 """, unsafe_allow_html=True)
 
