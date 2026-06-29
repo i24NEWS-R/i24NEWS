@@ -250,7 +250,6 @@ with chart_col:
 
     has_i24 = any("i24" in ans for ans in labels)
     if sel_w == "ממוצע שני הגלים" and has_i24:
-        st.write("") 
         
         #########################################
         # כרטיס שלישי - פירוט i24 (תרשים בלבד)
@@ -258,7 +257,6 @@ with chart_col:
         with st.container(border=True):
             i24_ans = next((ans for ans in labels if "i24" in ans), None)
             st.markdown(f"### 👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news")
-            st.write("")
             
             d_table, d_wrap, d_s_vals, d_m_vals = [], [], [], []
             all_demo = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
