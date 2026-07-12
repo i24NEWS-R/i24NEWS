@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>דשבורד אנליטי - משרד החוץ</title>
+    <style>
+        :root {
+            --bg-main: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --primary: #1e3a8a;
+            --accent-orange: #ea580c;
+            
+            /* Demographic Soft Palette */
+            --gender-male: #93c5fd;
+            --gender-female: #fbcfe8;
+            --age-young: #f1f5f9;
+            --age-mid: #cbd5e1;
+            --age-old: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 280px;
+            background-color: #0f172a;
+            color: #fff;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            right: 0;
+            top: 0;
+            border-left: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-brand {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: #1e293b;
+            color: #fff;
+        }
+
+        .nav-item.active {
+            border-right: 4px solid #38bdf8;
+            background-color: #1e293b;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            margin-right: 280px;
+            flex-content: 1;
+            padding: 40px;
+            width: calc(100% - 280px);
+        }
+
+        .header-panel {
+            margin-bottom: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title h1 {
+            font-size: 1.75rem;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .header-title p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Dashboard Slide Containers */
+        .dashboard-section {
+            display: none;
+        }
+
+        .dashboard-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Grid Layout Components */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+
+        /* Big Numbers / Metric Cards */
+        .metric-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+        
+        .metric-card.orange .metric-value { color: var(--accent-orange); }
+        .metric-card.green .metric-value { color: #10b981; }
+        .metric-card.purple .metric-value { color: #8b5cf6; }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Tables styling */
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+            margin-top: 10px;
+        }
+
+        .custom-table th {
+            background-color: #f8fafc;
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 14px 16px;
+            font-size: 0.9rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .custom-table td {
+            padding: 14px 16px;
+            font-size: 0.95rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .custom-table tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* Demographic Progress Bar styles */
+        .bar-container {
+            margin-bottom: 20px;
+        }
+
+        .bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .stacked-bar {
+            display: flex;
+            height: 24px;
+            border-radius: 6px;
+            overflow: hidden;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #0f172a;
+            text-align: center;
+            line-height: 24px;
+        }
+
+        /* Legends */
+        .global-legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+        }
+
+        /* Lists */
+        .bullet-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .bullet-item {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border-right: 4px solid var(--primary);
+            font-size: 1.05rem;
+            font-weight: 500;
+        }
+        
+        /* Two box layout */
+        .split-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .quote-box {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+            border-right: 3px solid #cbd5e1;
+        }
+
+        .quote-source {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .quote-txt {
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .quote-lang {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-style: italic;
+            margin-top: 4px;
+            direction: ltr;
+            text-align: left;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            background: #eff6ff;
+            color: #1e40af;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            border: 1px solid #bfdbfe;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR NAVIGATION -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <span>📊</span> משרד החוץ • דשבורד
+        </div>
+        <ul class="nav-list">
+            <li class="nav-item active" onclick="showSection('sec1')">שקף 1: פתיח ומטרות</li>
+            <li class="nav-item" onclick="showSection('sec2')">שקף 2: סיכום נתונים מרכזי</li>
+            <li class="nav-item" onclick="showSection('sec3')">שקף 3: מגמה שבועית</li>
+            <li class="nav-item" onclick="showSection('sec4')">שקף 4: פיזור גיאוגרפי עולמי</li>
+            <li class="nav-item" onclick="showSection('sec5')">שקף 5: פירוט דמוגרפי</li>
+            <li class="nav-item" onclick="showSection('sec6')">שקף 6: נתוני מעורבות מורחבים</li>
+            <li class="nav-item" onclick="showSection('sec7')">שקף 7: תוכן מוביל (מעורבות)</li>
+            <li class="nav-item" onclick="showSection('sec8')">שקף 8: דוגמה לתגובות</li>
+            <li class="nav-item" onclick="showSection('sec9')">שקף 9: נושאי תגובות (ריק)</li>
+            <li class="nav-item" onclick="showSection('sec10')">שקף 10: תוכן מוביל (ThruPlay)</li>
+            <li class="nav-item" onclick="showSection('sec11')">שקף 11: משפיעני רשת ושותפויות</li>
+            <li class="nav-item" onclick="showSection('sec12')">שקף 12: יעדים לחודש הבא</li>
+        </ul>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        
+        <!-- HEADER -->
+        <div class="header-panel">
+            <div class="header-title">
+                <h1 id="main-section-title">דשבורד אנליטי מקיף</h1>
+                <p id="main-section-subtitle">משרד החוץ - סיכום פעילות ונתוני מדיה רב-ערוציים</p>
+            </div>
+        </div>
+
+        <!-- SECTION 1: INTRODUCTION -->
+        <div id="sec1" class="dashboard-section active">
+            <div class="card">
+                <div class="card-title">🎯 מטרת הדוח והיקף הפעילות</div>
+                <p style="font-size: 1.1rem; line-height: 1.7; margin-bottom: 20px;">
+                    דשבורד זה מרכז את הנתונים האנליטיים מכלל פלטפורמות הדיגיטל והרשתות החברתיות עבור משרד החוץ. 
+                    הנתונים משקפים מדדי צפיות, התפלגות קהלים, מעורבות גולשים ישירה, ושותפויות אסטרטגיות במטרה למקסם את אפקטיביות ההסברה והחשיפה הגלובלית.
+                </p>
+                <div class="grid-3" style="margin-top: 30px;">
+                    <div class="card" style="background: #f1f5f9;">
+                        <h4 style="margin-bottom: 8px; color: var(--primary);">📊 ניתוח כמותי קשיח</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">מעקב מדויק אחר צפיות, חשיפות וטווחי זמן שבועיים.</p>
+                    </div>
+                    <div class="card" style="background: #f1f5f9;">
+                        <h4 style="margin-bottom: 8px; color: var(--accent-orange);">👥 פילוח דמוגרפי ומגדרי</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">זיהוי העדפות קהל יעד לפי פלטפורמות בהשוואה מבוססת ערימה.</p>
+                    </div>
+                    <div class="card" style="background: #f1f5f9;">
+                        <h4 style="margin-bottom: 8px; color: #10b981;">🌍 פריסה גיאוגרפית</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-muted);">מיקוד גיאוגרפי מותאם באזורי עניין אסטרטגיים ברחבי העולם.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: OVERVIEW -->
+        <div id="sec2" class="dashboard-section">
+            <div class="grid-4">
+                <div class="card metric-card">
+                    <div class="metric-value">34.2M</div>
+                    <div class="metric-label">סה"כ צפיות בפלטפורמות</div>
+                </div>
+                <div class="card metric-card orange">
+                    <div class="metric-value">492.3K</div>
+                    <div class="metric-label">סה"כ מעורבות גולשים</div>
+                </div>
+                <div class="card metric-card green">
+                    <div class="metric-value">14.1M</div>
+                    <div class="metric-label">סה"כ צפיות ThruPlay</div>
+                </div>
+                <div class="card metric-card purple">
+                    <div class="metric-value">2.6M</div>
+                    <div class="metric-label">קליקים לאתר ולינקים</div>
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">📈 התפלגות צפיות כללית</div>
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>פלטפורמה</th>
+                                <th>צפיות</th>
+                                <th>אחוז מתוך הסך הכל</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>דיגיטל</td><td>12,450,119</td><td>36.4%</td></tr>
+                            <tr><td>יוטיוב</td><td>9,102,485</td><td>26.6%</td></tr>
+                            <tr><td>פייסבוק</td><td>5,891,044</td><td>17.2%</td></tr>
+                            <tr><td>טיקטוק</td><td>4,120,381</td><td>12.0%</td></tr>
+                            <tr><td>טוויטר</td><td>1,540,290</td><td>4.5%</td></tr>
+                            <tr><td>אינסטגרם</td><td>1,121,083</td><td>3.3%</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                    <div class="card-title" style="width: 100%;">📊 יחס צפיות פלטפורמות (גראפי)</div>
+                    <!-- Big Pie chart donut -->
+                    <svg width="220" height="220" viewBox="0 0 42 42" class="donut">
+                        <circle class="donut-hole" cx="21" cy="21" r="15.91549430918954" fill="#fff"></circle>
+                        <circle class="donut-ring" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#e2e8f0" stroke-width="5"></circle>
+                        
+                        <!-- Segments -->
+                        <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#1e3a8a" stroke-width="5" stroke-dasharray="36.4 63.6" stroke-dashoffset="25"></circle>
+                        <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#3b82f6" stroke-width="5" stroke-dasharray="26.6 73.4" stroke-dashoffset="-11.4"></circle>
+                        <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#10b981" stroke-width="5" stroke-dasharray="17.2 82.8" stroke-dashoffset="-38"></circle>
+                        <circle class="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f59e0b" stroke-width="5" stroke-dasharray="19.8 80.2" stroke-dashoffset="-55.2"></circle>
+                    </svg>
+                    <div style="display:flex; gap: 10px; font-size: 0.8rem; margin-top: 15px; flex-wrap: wrap; justify-content: center;">
+                        <span style="color:#1e3a8a; font-weight:bold;">■ דיגיטל (36.4%)</span>
+                        <span style="color:#3b82f6; font-weight:bold;">■ יוטיוב (26.6%)</span>
+                        <span style="color:#10b981; font-weight:bold;">■ פייסבוק (17.2%)</span>
+                        <span style="color:#f59e0b; font-weight:bold;">■ אחר (19.8%)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: WEEKLY TREND -->
+        <div id="sec3" class="dashboard-section">
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-title">📈 צפיות שבועיות</div>
+                <!-- SVG Bar Chart -->
+                <svg width="100%" height="160" viewBox="0 0 700 140" preserveAspectRatio="none">
+                    <!-- Bars -->
+                    <rect x="20" y="20" width="60" height="100" fill="#0f172a" rx="4"/>
+                    <rect x="110" y="64" width="60" height="56" fill="#0f172a" rx="4"/>
+                    <rect x="200" y="84" width="60" height="36" fill="#0f172a" rx="4"/>
+                    <rect x="290" y="77" width="60" height="43" fill="#0f172a" rx="4"/>
+                    <rect x="380" y="92" width="60" height="28" fill="#0f172a" rx="4"/>
+                    <rect x="470" y="72" width="60" height="48" fill="#0f172a" rx="4"/>
+                    <rect x="560" y="91" width="60" height="29" fill="#0f172a" rx="4"/>
+                    
+                    <!-- Values צמוד לקצה הבר -->
+                    <text x="50" y="15" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">10.3M</text>
+                    <text x="140" y="59" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">5.8M</text>
+                    <text x="230" y="79" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">3.8M</text>
+                    <text x="320" y="72" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">4.4M</text>
+                    <text x="410" y="87" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">2.9M</text>
+                    <text x="500" y="67" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">5.0M</text>
+                    <text x="590" y="86" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">3.0M</text>
+                </svg>
+                <div style="display: flex; justify-content: space-between; padding: 0 10px; font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">
+                    <span style="width:70px; text-align:center;">10-16 במאי</span>
+                    <span style="width:70px; text-align:center;">17-23 במאי</span>
+                    <span style="width:70px; text-align:center;">24-30 במאי</span>
+                    <span style="width:70px; text-align:center;">31 במאי - 6 ביוני</span>
+                    <span style="width:70px; text-align:center;">7-13 ביוני</span>
+                    <span style="width:70px; text-align:center;">14-20 ביוני</span>
+                    <span style="width:70px; text-align:center;">21-27 ביוני</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">🔥 מעורבות שבועית</div>
+                <!-- SVG Bar Chart -->
+                <svg width="100%" height="160" viewBox="0 0 700 140" preserveAspectRatio="none">
+                    <!-- Bars -->
+                    <rect x="20" y="20" width="60" height="100" fill="#ea580c" rx="4"/>
+                    <rect x="110" y="55" width="60" height="65" fill="#ea580c" rx="4"/>
+                    <rect x="200" y="35" width="60" height="85" fill="#ea580c" rx="4"/>
+                    <rect x="290" y="84" width="60" height="36" fill="#ea580c" rx="4"/>
+                    <rect x="380" y="88" width="60" height="32" fill="#ea580c" rx="4"/>
+                    <rect x="470" y="39" width="60" height="81" fill="#ea580c" rx="4"/>
+                    <rect x="560" y="87" width="60" height="33" fill="#ea580c" rx="4"/>
+                    
+                    <!-- Values צמוד לקצה הבר -->
+                    <text x="50" y="15" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">107.5K</text>
+                    <text x="140" y="50" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">69.7K</text>
+                    <text x="230" y="30" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">91.0K</text>
+                    <text x="320" y="79" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">38.3K</text>
+                    <text x="410" y="83" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">33.8K</text>
+                    <text x="500" y="34" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">86.6K</text>
+                    <text x="590" y="82" font-size="11" font-weight="bold" fill="#ea580c" text-anchor="middle">35.4K</text>
+                </svg>
+                <div style="display: flex; justify-content: space-between; padding: 0 10px; font-size: 0.85rem; color: var(--text-muted); margin-top: 5px;">
+                    <span style="width:70px; text-align:center;">10-16 במאי</span>
+                    <span style="width:70px; text-align:center;">17-23 במאי</span>
+                    <span style="width:70px; text-align:center;">24-30 במאי</span>
+                    <span style="width:70px; text-align:center;">31 במאי - 6 ביוני</span>
+                    <span style="width:70px; text-align:center;">7-13 ביוני</span>
+                    <span style="width:70px; text-align:center;">14-20 ביוני</span>
+                    <span style="width:70px; text-align:center;">21-27 ביוני</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: GEOGRAPHY -->
+        <div id="sec4" class="dashboard-section">
+            <div class="card">
+                <div class="card-title">🌍 חשיפה לפי אזורים גיאוגרפיים אסטרטגיים</div>
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>אזור / מדינה</th>
+                            <th>חשיפה / צפיות</th>
+                            <th>מדד צמיחה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>ארצות הברית והשוק האמריקאי</td><td>14,850,220</td><td>+12%</td></tr>
+                        <tr><td>מדינות המפרץ (איחוד האמירויות, סעודיה)</td><td>8,410,115</td><td>+24%</td></tr>
+                        <tr><td>מערב אירופה (בריטניה, צרפת, גרמניה)</td><td>6,114,300</td><td>+5%</td></tr>
+                        <tr><td>אפריקה (נציגויות מרכזיות, סומלילנד)</td><td>3,124,550</td><td>+18%</td></tr>
+                        <tr><td>אסיה והפסיפיק (הודו, יפן)</td><td>1,701,200</td><td>+9%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 5: DEMOGRAPHICS -->
+        <div id="sec5" class="dashboard-section">
+            <!-- Global Legend for Demographics -->
+            <div class="global-legend">
+                <div class="legend-item"><div class="legend-color" style="background: var(--gender-male);"></div> גברים</div>
+                <div class="legend-item"><div class="legend-color" style="background: var(--gender-female);"></div> נשים</div>
+                <div class="legend-item" style="margin-right: auto;"><div class="legend-color" style="background: var(--age-young);"></div> 18-34</div>
+                <div class="legend-item"><div class="legend-color" style="background: var(--age-mid);"></div> 35-54</div>
+                <div class="legend-item"><div class="legend-color" style="background: var(--age-old);"></div> 55+</div>
+            </div>
+
+            <div class="split-box">
+                <!-- Gender Card -->
+                <div class="card">
+                    <div class="card-title">👥 התפלגות מגדרית</div>
+                    
+                    <!-- Facebook -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>פייסבוק</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 68%; background: var(--gender-male);">68%</div>
+                            <div style="width: 32%; background: var(--gender-female);">32%</div>
+                        </div>
+                    </div>
+                    <!-- Twitter -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>טוויטר</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 74%; background: var(--gender-male);">74%</div>
+                            <div style="width: 26%; background: var(--gender-female);">26%</div>
+                        </div>
+                    </div>
+                    <!-- Digital -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>דיגיטל</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 68%; background: var(--gender-male);">68%</div>
+                            <div style="width: 32%; background: var(--gender-female);">32%</div>
+                        </div>
+                    </div>
+                    <!-- Instagram -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>אינסטגרם</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 49%; background: var(--gender-male);">49%</div>
+                            <div style="width: 51%; background: var(--gender-female);">51%</div>
+                        </div>
+                    </div>
+                    <!-- YouTube -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>יוטיוב</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 82%; background: var(--gender-male);">82%</div>
+                            <div style="width: 18%; background: var(--gender-female);">18%</div>
+                        </div>
+                    </div>
+                    <!-- TikTok -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>טיקטוק</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 68%; background: var(--gender-male);">68%</div>
+                            <div style="width: 32%; background: var(--gender-female);">32%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Age Card -->
+                <div class="card">
+                    <div class="card-title">⏳ התפלגות גילאים</div>
+                    
+                    <!-- Facebook -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>פייסבוק</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 34%; background: var(--age-young);">34%</div>
+                            <div style="width: 52%; background: var(--age-mid);">52%</div>
+                            <div style="width: 14%; background: var(--age-old);">14%</div>
+                        </div>
+                    </div>
+                    <!-- Twitter -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>טוויטר</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 22%; background: var(--age-young);">22%</div>
+                            <div style="width: 35%; background: var(--age-mid);">35%</div>
+                            <div style="width: 43%; background: var(--age-old);">43%</div>
+                        </div>
+                    </div>
+                    <!-- Digital -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>דיגיטל</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 19%; background: var(--age-young);">19%</div>
+                            <div style="width: 35%; background: var(--age-mid);">35%</div>
+                            <div style="width: 46%; background: var(--age-old);">46%</div>
+                        </div>
+                    </div>
+                    <!-- Instagram -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>אינסטגרם</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 25%; background: var(--age-young);">25%</div>
+                            <div style="width: 50%; background: var(--age-mid);">50%</div>
+                            <div style="width: 25%; background: var(--age-old);">25%</div>
+                        </div>
+                    </div>
+                    <!-- YouTube -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>יוטיוב</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 27%; background: var(--age-young);">27%</div>
+                            <div style="width: 34%; background: var(--age-mid);">34%</div>
+                            <div style="width: 39%; background: var(--age-old);">39%</div>
+                        </div>
+                    </div>
+                    <!-- TikTok -->
+                    <div class="bar-container">
+                        <div class="bar-label"><span>טיקטוק</span></div>
+                        <div class="stacked-bar">
+                            <div style="width: 33%; background: var(--age-young);">33%</div>
+                            <div style="width: 41%; background: var(--age-mid);">41%</div>
+                            <div style="width: 25%; background: var(--age-old);">25%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 6: ENGAGEMENT DATA -->
+        <div id="sec6" class="dashboard-section">
+            <div class="grid-4">
+                <div class="card" style="border-right: 4px solid #3b82f6; background: #f0fdf4;">
+                    <div class="metric-label" style="color: #3b82f6;">👍 לייקים והערכות</div>
+                    <div class="metric-value" style="font-size: 1.8rem; margin-top: 10px;">245,100</div>
+                </div>
+                <div class="card" style="border-right: 4px solid #10b981; background: #f0fdf4;">
+                    <div class="metric-label" style="color: #10b981;">🖱️ קליקים וקישורים</div>
+                    <div class="metric-value" style="font-size: 1.8rem; margin-top: 10px;">132,450</div>
+                </div>
+                <div class="card" style="border-right: 4px solid #ea580c; background: #f0fdf4;">
+                    <div class="metric-label" style="color: #ea580c;">💬 תגובות גולשים</div>
+                    <div class="metric-value" style="font-size: 1.8rem; margin-top: 10px;">64,800</div>
+                </div>
+                <div class="card" style="border-right: 4px solid #8b5cf6; background: #f0fdf4;">
+                    <div class="metric-label" style="color: #8b5cf6;">🔁 שיתופים והפצות</div>
+                    <div class="metric-value" style="font-size: 1.8rem; margin-top: 10px;">49,950</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 7: TOP CONTENT ENGAGEMENT -->
+        <div id="sec7" class="dashboard-section">
+            <div class="card">
+                <div class="card-title">🎬 תוכן מוביל לפי מעורבות גולשים</div>
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>שם הסרטון / נושא</th>
+                            <th>פלטפורמה</th>
+                            <th>לייקים</th>
+                            <th>תגובות</th>
+                            <th>שיתופים</th>
+                            <th>סה"כ מעורבות</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>מרטין לותר קינג וישראל</td><td>פייסבוק</td><td>42,100</td><td>5,400</td><td>8,200</td><td><strong>55,700</strong></td></tr>
+                        <tr><td>הסכם ההבנות האסטרטגי עם סומלילנד</td><td>יוטיוב</td><td>38,400</td><td>4,110</td><td>6,050</td><td><strong>48,560</strong></td></tr>
+                        <tr><td>חדשנות וטכנולוגיה ישראלית חקלאית</td><td>טיקטוק</td><td>29,150</td><td>3,200</td><td>4,900</td><td><strong>37,250</strong></td></tr>
+                        <tr><td>ביקור משלחת המפרץ בירושלים</td><td>אינסטגרם</td><td>22,400</td><td>1,950</td><td>3,100</td><td><strong>27,450</strong></td></tr>
+                        <tr><td>נאום השגריר באו"ם - זכויות אדם</td><td>טוויטר</td><td>18,900</td><td>2,800</td><td>4,200</td><td><strong>25,900</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 8: COMMENTS SAMPLES -->
+        <div id="sec8" class="dashboard-section">
+            <div class="split-box">
+                <!-- Box 1 -->
+                <div class="card">
+                    <div class="card-title" style="color: #1e3a8a;">✊ מרטין לותר קינג וישראל</div>
+                    
+                    <div class="quote-box">
+                        <div class="quote-source">תגובה 1</div>
+                        <div class="quote-txt">"ואכן, יהודי ארצות הברית תמיד תמכו באפרו-אמריקאים ועזרו להם רבות, והם עשו טוב!"</div>
+                        <div class="quote-lang">En effet, les juifs américains ont toujours soutenu les afro-americains et les ont beaucoup aidé et ils ont bien fait !</div>
+                    </div>
+
+                    <div class="quote-box">
+                        <div class="quote-source">תגובה 2</div>
+                        <div class="quote-txt">"אני שמחה ללמוד על מערכת היחסים הזו בין מרטין לותר קינג וישראל."</div>
+                        <div class="quote-lang">Je suis ravie d'apprendre cette relation entre Martin Luther King et Israël.</div>
+                    </div>
+                </div>
+
+                <!-- Box 2 -->
+                <div class="card">
+                    <div class="card-title" style="color: #10b981;">🌍 יחסי ישראל – סומלילנד</div>
+                    
+                    <div class="quote-box">
+                        <div class="quote-source">תגובה 1</div>
+                        <div class="quote-txt">"כבוד ותועלת הדדיים, ישראל היא מעצמת על במדע, טכנולוגיה, הגנה וחדשנות ואנו סקרנים ללמוד מהמומחיות שלהם."</div>
+                        <div class="quote-lang">Mutual respect and benefit, Israel is super-power in science, Technology, defense and innovation and we are curious to learn from their expertise.</div>
+                    </div>
+
+                    <div class="quote-box">
+                        <div class="quote-source">תגובה 2</div>
+                        <div class="quote-txt">"ההסכם בין ישראל לסומלילנד מייצג הבנה הדדית ומחויבות משותפת לשיתוף פעולה. זוהי שותפות הבנויה על אינטרסים משותפים, כבוד הדדי וחתירה לשלום, פיתוח ושגשוג עבור שתי המדינות."</div>
+                        <div class="quote-lang">The agreement between Israel and Somaliland represents a mutual understanding and a shared commitment to cooperation. It is a partnership built on common interests, mutual respect, and the pursuit of peace, development, and prosperity for both countries.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 9: BLANK SECTION -->
+        <div id="sec9" class="dashboard-section">
+            <div class="split-box">
+                <div class="card" style="min-height: 300px;">
+                    <div class="card-title">🎗️ 7 באוקטובר והדממה</div>
+                    <!-- Left intentionally blank as requested -->
+                </div>
+                <div class="card" style="min-height: 300px;">
+                    <div class="card-title">🚀 החדשנות בישראל לפי אילון מאסק</div>
+                    <!-- Left intentionally blank as requested -->
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 10: TOP CONTENT THRUPLAY -->
+        <div id="sec10" class="dashboard-section">
+            <div class="card">
+                <div class="card-title">⏱️ תוכן מוביל לפי צפיות איכותיות (ThruPlay)</div>
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th>שם הסרטון</th>
+                            <th>פלטפורמה</th>
+                            <th>צפיות ThruPlay</th>
+                            <th>אחוז השלמה (Completion Rate)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>הסכם ההבנות האסטרטגי עם סומלילנד</td><td>יוטיוב / דיגיטל</td><td>4,850,000</td><td>53%</td></tr>
+                        <tr><td>מרטין לותר קינג וישראל</td><td>פייסבוק</td><td>3,110,000</td><td>48%</td></tr>
+                        <tr><td>חדשנות וטכנולוגיה ישראלית חקלאית</td><td>טיקטוק</td><td>2,950,000</td><td>61%</td></tr>
+                        <tr><td>סיפורם של חסידי אומות עולם באפריקה</td><td>יוטיוב</td><td>1,920,000</td><td>42%</td></tr>
+                        <tr><td>הסבר אינטראקטיבי: שיתוף פעולה במפרץ</td><td>פייסבוק / דיגיטל</td><td>1,270,000</td><td>39%</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 11: INFLUENCERS -->
+        <div id="sec11" class="dashboard-section">
+            <div class="split-box">
+                <div class="card">
+                    <div class="card-title">👥 רשת משפיענים ויוצרי תוכן</div>
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>שם הפרופיל / יוצר</th>
+                                <th>עוקבים</th>
+                                <th>קהל יעד מרכזי</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Global Voices Africa</td><td>1.2M</td><td>מזרח ומערב אפריקה</td></tr>
+                            <tr><td>Tech & Innovation UAE</td><td>850K</td><td>מדינות המפרץ, מקצועי</td></tr>
+                            <tr><td>History in Pixels (US)</td><td>2.4M</td><td>ארצות הברית, קהל כללי</td></tr>
+                            <tr><td>Diplomacy Today</td><td>410K</td><td>אירופה, קובעי מדיניות</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">📢 עדכונים ושותפויות רשת חדשות</div>
+                    <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 12px;">
+                        <div>
+                            <div class="tag-pill">הסכם חדש עם CBN</div>
+                        </div>
+                        <div>
+                            <div class="tag-pill">הסכם חדש עם Meridian Network</div>
+                        </div>
+                        <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 10px; line-height: 1.5;">
+                            הסכמי הפצה וסינדיקציית תוכן אלו ירחיבו משמעותית את חשיפת החומרים ההיסטוריים והמדעיים ברשתות שידור מובילות בארה"ב ובאפריקה במהלך הרבעון הקרוב.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 12: NEXT MONTH GOALS -->
+        <div id="sec12" class="dashboard-section">
+            <div class="card">
+                <div class="card-title">🚀 יעדים אסטרטגיים לחודש הבא</div>
+                <ul class="bullet-list">
+                    <li class="bullet-item">📅 העלאת סרטונים המתכתבים עם אירועים היסטוריים ומועדים בינלאומיים</li>
+                    <li class="bullet-item">🎵 הרחבת ההפצה והאופטימיזציה בטיקטוק כדי להגיע ליותר צפיות וחשיפה ויראלית</li>
+                    <li class="bullet-item">🎥 התנסות עם סרטונים יותר ארוכים ופתרונות עומק ביוטיוב (Long-form Content)</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- INTERACTIVE DASHBOARD JAVASCRIPT -->
+    <script>
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.dashboard-section');
+            sections.forEach(sec => sec.classList.remove('active'));
+
+            // Remove active class from nav items
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => item.classList.remove('active'));
+
+            // Show selected section
+            const activeSection = document.getElementById(sectionId);
+            if (activeSection) {
+                activeSection.classList.add('active');
+            }
+
+            // Highlight active nav item
+            // Find item based on onclick attribute text
+            navItems.forEach(item => {
+                if (item.getAttribute('onclick').includes(sectionId)) {
+                    item.classList.add('active');
+                    
+                    // Also update the main headers dynamically for clean dashboard feeling
+                    document.getElementById('main-section-title').innerText = item.innerText.split(':')[1] || item.innerText;
+                }
+            });
+        }
+    </script>
+</body>
+</html>
