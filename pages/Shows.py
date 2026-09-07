@@ -6,7 +6,7 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# CSS ליישור RTL, מרכוז, והידוק כפתורי התאריכים
+# CSS: יישור RTL, מרכוז, התאמת כפתורים לעיצוב התיבות ומיקומם בגובה התיבה
 st.markdown(
     """
     <style>
@@ -36,13 +36,24 @@ st.markdown(
         justify-content: flex-start !important;
     }
 
-    /* עיצוב כפתורי תאריכים קומפקטיים וצמודים לתיבת התאריכים */
-    .date-btn-container button {
+    /* עיצוב הכפתורים בדיוק בצבע, בגובה ובסגנון של תיבות הקלט */
+    .date-btn-wrapper button {
+        margin-top: 28px !important; /* דוחף את הכפתורים בדיוק לגובה של התיבות */
+        background-color: #f0f2f6 !important; /* צבע הרקע של התיבות ב-Streamlit */
+        color: #31333F !important;
+        border: 1px solid #d6d8db !important;
+        border-radius: 8px !important;
+        height: 38px !important;
+        font-size: 13px !important;
+        font-weight: 500 !important;
         padding: 0px 4px !important;
-        font-size: 11px !important;
-        height: 22px !important;
-        min-height: 22px !important;
-        margin-bottom: 2px !important;
+        box-shadow: none !important;
+    }
+
+    /* אפקט Hover עדין לכפתורים */
+    .date-btn-wrapper button:hover {
+        background-color: #e4e7eb !important;
+        border-color: #bcbfc3 !important;
     }
     </style>
     """,
@@ -74,9 +85,10 @@ if "date_range" not in st.session_state:
 
 st.title("דשבורד תוכניות")
 
-# ===== תפריט עליון הדוק ב-4 עמודות בלבד =====
+# ===== תפריט עליון שורה אחת אופקית =====
 with st.container():
-    col_show, col_metric, col_date, col_freq = st.columns([2.2, 1.2, 2.2, 1.2])
+    # חלוקה הדוקה שמאפשרת לכפתורים לשבת לצד התיבה
+    col_show, col_metric, col_date, col_b1, col_b2, col_freq = st.columns([1.8, 1.1, 1.8, 0.6, 0.8, 1.1])
 
     # 1. בחירת תוכנית
     with col_show:
@@ -98,32 +110,13 @@ with st.container():
             index=0
         )
 
-    # 3. בחירת תאריכים + כפתורים מהירים קטנים בתוך האזור
+    # 3. בחירת תאריכים
     with col_date:
-        # כותרת + כפתורי קיצור מעל תיבת התאריכים
-        lbl_col, b1_col, b2_col = st.columns([1.2, 0.9, 1.1])
-        with lbl_col:
-            st.markdown("<label style='font-size:14px; font-weight:600;'>בחירת תאריכים:</label>", unsafe_allow_html=True)
-        with b1_col:
-            st.markdown('<div class="date-btn-container">', unsafe_allow_html=True)
-            if st.button("הכל", key="btn_all", use_container_width=True):
-                st.session_state.date_range = (min_date, max_date)
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-        with b2_col:
-            st.markdown('<div class="date-btn-container">', unsafe_allow_html=True)
-            if st.button("חודש אחרון", key="btn_month", use_container_width=True):
-                one_month_ago = max_date - pd.Timedelta(days=30)
-                st.session_state.date_range = (max(min_date, one_month_ago), max_date)
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
         date_range = st.date_input(
-            label="תאריכים",
+            label="בחירת תאריכים:",
             value=st.session_state.date_range,
             min_value=min_date,
-            max_value=max_date,
-            label_visibility="collapsed"
+            max_value=max_date
         )
 
         if isinstance(date_range, tuple) and len(date_range) == 2:
@@ -134,7 +127,24 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. אופן הצגת הנתונים
+    # 4. כפתור "הכל" באותו גובה ועיצוב תואם
+    with col_b1:
+        st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
+        if st.button("הכל", key="btn_all", use_container_width=True):
+            st.session_state.date_range = (min_date, max_date)
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # 5. כפתור "חודש אחרון" באותו גובה ועיצוב תואם
+    with col_b2:
+        st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
+        if st.button("חודש אחרון", key="btn_month", use_container_width=True):
+            one_month_ago = max_date - pd.Timedelta(days=30)
+            st.session_state.date_range = (max(min_date, one_month_ago), max_date)
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # 6. אופן הצגת הנתונים
     with col_freq:
         freq_option = st.selectbox(
             "אופן הצגת הנתונים:",
@@ -183,14 +193,13 @@ else:
         hovertemplate="תאריך: %{x|%Y-%m-%d}<br>ערך: %{y:.1f}<extra></extra>"
     )
     
-    # הגדרת ציר Y שיתחיל תמיד מ-0
     fig.update_layout(
         hovermode="x unified",
         xaxis_title="",
         yaxis_title="",
         yaxis=dict(
             tickformat=".1f",
-            rangemode="tozero"  # מבטיח שהגרף מתחיל מ-0
+            rangemode="tozero"  # הגרף מתחיל מ-0
         ),
         font=dict(size=14),
         height=450,
