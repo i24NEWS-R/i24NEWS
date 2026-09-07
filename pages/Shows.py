@@ -6,7 +6,7 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# CSS: יישור RTL, מרכוז והתאמת עיצוב הכפתורים לתיבות
+# CSS: יישור RTL, מרכוז והסרת margin מהכפתורים ליישור מושלם
 st.markdown(
     """
     <style>
@@ -36,9 +36,14 @@ st.markdown(
         justify-content: flex-start !important;
     }
 
-    /* עיצוב הכפתורים בדיוק בצבע, בגובה ובסגנון של תיבות הקלט */
+    /* איפוס margin וביטול רווח עליון */
+    .date-btn-wrapper {
+        margin-top: -12px !important;
+    }
+
+    /* עיצוב הכפתורים בצבע ובסגנון התיבות */
     .date-btn-wrapper button {
-        background-color: #f0f2f6 !important; /* צבע הרקע האפור של התיבות */
+        background-color: #f0f2f6 !important;
         color: #31333F !important;
         border: 1px solid #d6d8db !important;
         border-radius: 8px !important;
@@ -50,7 +55,6 @@ st.markdown(
         margin: 0 !important;
     }
 
-    /* אפקט Hover עדין לכפתורים */
     .date-btn-wrapper button:hover {
         background-color: #e4e7eb !important;
         border-color: #bcbfc3 !important;
@@ -126,7 +130,7 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. כפתור "הכל" עם כותרת דמה ליישור פיקסל-לפיקסל
+    # 4. כפתור "הכל" ללא margin
     with col_b1:
         st.markdown("<p style='margin-bottom:8px;'>&nbsp;</p>", unsafe_allow_html=True)
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
@@ -135,7 +139,7 @@ with st.container():
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 5. כפתור "חודש אחרון" עם כותרת דמה ליישור פיקסל-לפיקסל
+    # 5. כפתור "חודש אחרון" ללא margin
     with col_b2:
         st.markdown("<p style='margin-bottom:8px;'>&nbsp;</p>", unsafe_allow_html=True)
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
