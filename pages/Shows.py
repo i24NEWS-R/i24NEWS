@@ -6,7 +6,7 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# CSS: יישור RTL, מרכוז, התאמת כפתורים לעיצוב התיבות ומיקומם בגובה התיבה
+# CSS: יישור RTL, מרכוז והתאמת עיצוב הכפתורים לתיבות
 st.markdown(
     """
     <style>
@@ -38,16 +38,16 @@ st.markdown(
 
     /* עיצוב הכפתורים בדיוק בצבע, בגובה ובסגנון של תיבות הקלט */
     .date-btn-wrapper button {
-        margin-top: 135px !important; /* דוחף את הכפתורים בדיוק לגובה של התיבות */
-        background-color: #f0f2f6 !important; /* צבע הרקע של התיבות ב-Streamlit */
+        background-color: #f0f2f6 !important; /* צבע הרקע האפור של התיבות */
         color: #31333F !important;
         border: 1px solid #d6d8db !important;
         border-radius: 8px !important;
-        height: 48px !important;
+        height: 40px !important;
         font-size: 13px !important;
         font-weight: 500 !important;
         padding: 0px 4px !important;
         box-shadow: none !important;
+        margin: 0 !important;
     }
 
     /* אפקט Hover עדין לכפתורים */
@@ -87,7 +87,6 @@ st.title("דשבורד תוכניות")
 
 # ===== תפריט עליון שורה אחת אופקית =====
 with st.container():
-    # חלוקה הדוקה שמאפשרת לכפתורים לשבת לצד התיבה
     col_show, col_metric, col_date, col_b1, col_b2, col_freq = st.columns([1.8, 1.1, 1.8, 0.6, 0.8, 1.1])
 
     # 1. בחירת תוכנית
@@ -127,16 +126,18 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. כפתור "הכל" באותו גובה ועיצוב תואם
+    # 4. כפתור "הכל" עם כותרת דמה ליישור פיקסל-לפיקסל
     with col_b1:
+        st.markdown("<p style='margin-bottom:8px;'>&nbsp;</p>", unsafe_allow_html=True)
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
         if st.button("הכל", key="btn_all", use_container_width=True):
             st.session_state.date_range = (min_date, max_date)
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 5. כפתור "חודש אחרון" באותו גובה ועיצוב תואם
+    # 5. כפתור "חודש אחרון" עם כותרת דמה ליישור פיקסל-לפיקסל
     with col_b2:
+        st.markdown("<p style='margin-bottom:8px;'>&nbsp;</p>", unsafe_allow_html=True)
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
         if st.button("חודש אחרון", key="btn_month", use_container_width=True):
             one_month_ago = max_date - pd.Timedelta(days=30)
@@ -199,7 +200,7 @@ else:
         yaxis_title="",
         yaxis=dict(
             tickformat=".1f",
-            rangemode="tozero"  # הגרף מתחיל מ-0
+            rangemode="tozero"
         ),
         font=dict(size=14),
         height=450,
