@@ -38,7 +38,7 @@ st.markdown(
 
     /* עיצוב הכפתורים בדיוק בצבע, בגובה ובסגנון של תיבות הקלט */
     .date-btn-wrapper button {
-        margin-top: 28px !important; /* דוחף את הכפתורים בדיוק לגובה של התיבות */
+        margin-top: 35px !important; /* דוחף את הכפתורים בדיוק לגובה של התיבות */
         background-color: #f0f2f6 !important; /* צבע הרקע של התיבות ב-Streamlit */
         color: #31333F !important;
         border: 1px solid #d6d8db !important;
