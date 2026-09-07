@@ -12,9 +12,14 @@ DATA_PATH = os.path.join(os.path.dirname(__file__), "Shows.csv")
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
-    df['Date'] = pd.to_datetime(df['Date'])
     
-    # חישוב הנתח (Share = i24 / Reference * 100)
+    # המרת תאריכים סלחנית שמטפלת גם בפורמט DD/MM/YYYY וערכים ריקים
+    df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
+    
+    # ניקוי שורות עם תאריך לא תקין במידה ויש
+    df = df.dropna(subset=['Date'])
+    
+    # חישוב נתח
     df['Share'] = (df['i24'] / df['Reference'].replace(0, pd.NA)) * 100
     df['Share'] = df['Share'].fillna(0)
     
