@@ -6,20 +6,31 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# נתיב לקובץ ה-CSV שנמצא באותה תיקייה (pages)
+# עיצוב CSS ליישור תפריט הצד לימין (RTL)
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebar"] {
+        direction: rtl;
+        text-align: right;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# נתיב לקובץ ה-CSV בתיקיית pages
 DATA_PATH = os.path.join(os.path.dirname(__file__), "Shows.csv")
 
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
     
-    # המרת תאריכים סלחנית שמטפלת גם בפורמט DD/MM/YYYY וערכים ריקים
+    # המרת תאריכים סלחנית
     df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
-    
-    # ניקוי שורות עם תאריך לא תקין במידה ויש
     df = df.dropna(subset=['Date'])
     
-    # חישוב נתח
+    # חישוב נתח שוק
     df['Share'] = (df['i24'] / df['Reference'].replace(0, pd.NA)) * 100
     df['Share'] = df['Share'].fillna(0)
     
@@ -27,57 +38,73 @@ def load_data():
 
 df = load_data()
 
-# ===== תפריט בצד ימין (Sidebar) =====
-st.sidebar.header("סינון ופרמטרים")
+# ===== תפריט צדדי (Right Sidebar) =====
+st.sidebar.header("תפריט סינון")
 
-# 1. בחירת תוכנית (ברירת מחדל: המהדורה המרכזית איי 24)
+# 1. בחירת תוכנית (בולטים)
+st.sidebar.subheader("בחירת תוכנית")
 all_titles = sorted(df['Title'].dropna().unique().tolist())
 default_title = "המהדורה המרכזית איי 24"
 title_index = all_titles.index(default_title) if default_title in all_titles else 0
 
-selected_title = st.sidebar.selectbox(
-    "בחר תוכנית:",
+selected_title = st.sidebar.radio(
+    label="בחר תוכנית:",
     options=all_titles,
-    index=title_index
+    index=title_index,
+    label_visibility="collapsed"
 )
 
-# 2. בחירת מדד
+st.sidebar.divider()
+
+# 2. בחירת מדד (בולטים)
+st.sidebar.subheader("בחירת מדד")
 metric_option = st.sidebar.radio(
-    "בחר מדד להצגה:",
-    options=["רייטינג (i24)", "נתח (Share %)"],
-    index=0
+    label="בחר מדד להצגה:",
+    options=["רייטינג", "נתח שוק"],
+    index=0,
+    label_visibility="collapsed"
 )
 
-# 3. בחירת תאריכים (ברירת מחדל: מתחילת 2026)
-min_date = df['Date'].min()
-max_date = df['Date'].max()
-default_start = pd.to_datetime("2026-01-01")
+st.sidebar.divider()
 
-start_date = st.sidebar.date_input(
-    "תאריך התחלה:",
-    value=default_start if default_start >= min_date else min_date,
+# 3. בחירת תאריכים (בשורה אחת)
+st.sidebar.subheader("בחירת תאריכים")
+min_date = df['Date'].min().date()
+max_date = df['Date'].max().date()
+default_start = pd.to_datetime("2026-01-01").date()
+
+start_val = default_start if default_start >= min_date else min_date
+
+# בחירת טווח תאריכים בשורה אחת (Range Input)
+date_range = st.sidebar.date_input(
+    label="טווח תאריכים:",
+    value=(start_val, max_date),
     min_value=min_date,
-    max_value=max_date
-)
-end_date = st.sidebar.date_input(
-    "תאריך סיום:",
-    value=max_date,
-    min_value=min_date,
-    max_value=max_date
+    max_value=max_date,
+    label_visibility="collapsed"
 )
 
-# 4. אופן הצגת נתונים (יומית/שבועית/חודשית)
-freq_option = st.sidebar.selectbox(
-    "אופן הצגת נתונים:",
+# טיפול במקרה של בחירת תאריך יחיד תוך כדי הקלדה
+if isinstance(date_range, tuple) and len(date_range) == 2:
+    start_date, end_date = date_range
+else:
+    start_date = end_date = date_range[0] if isinstance(date_range, tuple) else date_range
+
+st.sidebar.divider()
+
+# 4. אופן הצגת הנתונים (בולטים)
+st.sidebar.subheader("אופן הצגת הנתונים")
+freq_option = st.sidebar.radio(
+    label="אופן הצגת הנתונים:",
     options=["יומית", "שבועית", "חודשית"],
-    index=0
+    index=0,
+    label_visibility="collapsed"
 )
 
-# ===== סינון והכנת הנתונים =====
-col_to_plot = 'i24' if metric_option == "רייטינג (i24)" else 'Share'
-y_label = "רייטינג (%)" if metric_option == "רייטינג (i24)" else "נתח (%)"
+# ===== עיבוד הנתונים =====
+col_to_plot = 'i24' if metric_option == "רייטינג" else 'Share'
+y_label = "רייטינג (%)" if metric_option == "רייטינג" else "נתח שוק (%)"
 
-# סינון לפי תוכנית וטווח תאריכים
 filtered_df = df[
     (df['Title'] == selected_title) &
     (df['Date'] >= pd.to_datetime(start_date)) &
@@ -92,7 +119,7 @@ elif freq_option == "חודשית":
 else:  # יומית
     plot_df = filtered_df[['Date', col_to_plot]].copy()
 
-# ===== תרשים בצד שמאל =====
+# ===== תרשים מרכזי =====
 st.title(f"תרשים מגמה - {selected_title}")
 
 if plot_df.empty:
@@ -117,8 +144,8 @@ else:
     
     st.plotly_chart(fig, use_container_width=True)
     
-    # כרטיסי סיכום קצרים מתחת לגרף
+    # מדדי סיכום מתחת לגרף
     c1, c2, c3 = st.columns(3)
     c1.metric("ממוצע בתקופה", f"{plot_df[col_to_plot].mean():.2f}%")
     c2.metric("שיא בתקופה", f"{plot_df[col_to_plot].max():.2f}%")
-    c3.metric("מספר ימי שידור / תצפיות", len(plot_df))
+    c3.metric("מספר תצפיות", len(plot_df))
