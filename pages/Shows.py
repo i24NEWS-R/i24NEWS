@@ -6,7 +6,7 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# CSS: יישור RTL, מרכוז והצמדת אלמנטים לגובה אחיד
+# CSS ליישור RTL, מרכוז, והידוק כפתורי התאריכים
 st.markdown(
     """
     <style>
@@ -36,12 +36,13 @@ st.markdown(
         justify-content: flex-start !important;
     }
 
-    /* יישור גובה הכפתורים בדיוק לקו הכותרת "בחירת תאריכים:" */
-    div[data-testid="column"] button {
-        margin-top: 28px !important;
-        padding: 2px 4px !important;
-        font-size: 12px !important;
-        height: 38px !important;
+    /* עיצוב כפתורי תאריכים קומפקטיים וצמודים לתיבת התאריכים */
+    .date-btn-container button {
+        padding: 0px 4px !important;
+        font-size: 11px !important;
+        height: 22px !important;
+        min-height: 22px !important;
+        margin-bottom: 2px !important;
     }
     </style>
     """,
@@ -73,12 +74,11 @@ if "date_range" not in st.session_state:
 
 st.title("דשבורד תוכניות")
 
-# ===== שורה אחת הדוקה וצרה לכל האלמנטים והכפתורים =====
+# ===== תפריט עליון הדוק ב-4 עמודות בלבד =====
 with st.container():
-    # חלוקת פרופורציות שדה קצרות להכנסת כל הרכיבים בשורה אחת
-    col_show, col_metric, col_date, col_btn1, col_btn2, col_freq = st.columns([1.8, 1.2, 1.8, 0.6, 0.8, 1.2])
+    col_show, col_metric, col_date, col_freq = st.columns([2.2, 1.2, 2.2, 1.2])
 
-    # 1. בחירת תוכנית (מקוכצת)
+    # 1. בחירת תוכנית
     with col_show:
         all_titles = sorted(df['Title'].dropna().unique().tolist())
         default_title = "המהדורה המרכזית איי 24"
@@ -90,7 +90,7 @@ with st.container():
             index=title_index
         )
 
-    # 2. בחירת מדד (מקוכצת)
+    # 2. בחירת מדד
     with col_metric:
         metric_option = st.selectbox(
             "בחירת מדד:",
@@ -98,13 +98,32 @@ with st.container():
             index=0
         )
 
-    # 3. בחירת תאריכים
+    # 3. בחירת תאריכים + כפתורים מהירים קטנים בתוך האזור
     with col_date:
+        # כותרת + כפתורי קיצור מעל תיבת התאריכים
+        lbl_col, b1_col, b2_col = st.columns([1.2, 0.9, 1.1])
+        with lbl_col:
+            st.markdown("<label style='font-size:14px; font-weight:600;'>בחירת תאריכים:</label>", unsafe_allow_html=True)
+        with b1_col:
+            st.markdown('<div class="date-btn-container">', unsafe_allow_html=True)
+            if st.button("הכל", key="btn_all", use_container_width=True):
+                st.session_state.date_range = (min_date, max_date)
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+        with b2_col:
+            st.markdown('<div class="date-btn-container">', unsafe_allow_html=True)
+            if st.button("חודש אחרון", key="btn_month", use_container_width=True):
+                one_month_ago = max_date - pd.Timedelta(days=30)
+                st.session_state.date_range = (max(min_date, one_month_ago), max_date)
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
         date_range = st.date_input(
-            label="בחירת תאריכים:",
+            label="תאריכים",
             value=st.session_state.date_range,
             min_value=min_date,
-            max_value=max_date
+            max_value=max_date,
+            label_visibility="collapsed"
         )
 
         if isinstance(date_range, tuple) and len(date_range) == 2:
@@ -115,20 +134,7 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. כפתור "הכל" (צמוד לתאריכים)
-    with col_btn1:
-        if st.button("הכל", use_container_width=True):
-            st.session_state.date_range = (min_date, max_date)
-            st.rerun()
-
-    # 5. כפתור "חודש אחרון" (צמוד לתאריכים)
-    with col_btn2:
-        if st.button("חודש אחרון", use_container_width=True):
-            one_month_ago = max_date - pd.Timedelta(days=30)
-            st.session_state.date_range = (max(min_date, one_month_ago), max_date)
-            st.rerun()
-
-    # 6. אופן הצגת הנתונים (מקוכצת)
+    # 4. אופן הצגת הנתונים
     with col_freq:
         freq_option = st.selectbox(
             "אופן הצגת הנתונים:",
@@ -138,7 +144,7 @@ with st.container():
 
 st.divider()
 
-# ===== עיבוד והכנת הנתונים =====
+# ===== עיבוד הנתונים =====
 col_to_plot = 'i24' if metric_option == "רייטינג" else 'Share'
 
 filtered_df = df[
@@ -176,11 +182,16 @@ else:
         line_width=2.5,
         hovertemplate="תאריך: %{x|%Y-%m-%d}<br>ערך: %{y:.1f}<extra></extra>"
     )
+    
+    # הגדרת ציר Y שיתחיל תמיד מ-0
     fig.update_layout(
         hovermode="x unified",
         xaxis_title="",
         yaxis_title="",
-        yaxis=dict(tickformat=".1f"),
+        yaxis=dict(
+            tickformat=".1f",
+            rangemode="tozero"  # מבטיח שהגרף מתחיל מ-0
+        ),
         font=dict(size=14),
         height=450,
         title_x=1.0
