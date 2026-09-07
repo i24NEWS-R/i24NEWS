@@ -6,7 +6,7 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# CSS: יישור RTL, מרכוז והסרת margin מהכפתורים ליישור מושלם
+# CSS: יישור RTL, מרכוז והתאמת עיצוב הכפתורים לתיבות
 st.markdown(
     """
     <style>
@@ -36,11 +36,6 @@ st.markdown(
         justify-content: flex-start !important;
     }
 
-    /* איפוס margin וביטול רווח עליון */
-    .date-btn-wrapper {
-        margin-top: -12px !important;
-    }
-
     /* עיצוב הכפתורים בצבע ובסגנון התיבות */
     .date-btn-wrapper button {
         background-color: #f0f2f6 !important;
@@ -52,7 +47,6 @@ st.markdown(
         font-weight: 500 !important;
         padding: 0px 4px !important;
         box-shadow: none !important;
-        margin: 0 !important;
     }
 
     .date-btn-wrapper button:hover {
@@ -130,18 +124,18 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. כפתור "הכל" ללא margin
+    # 4. כפתור "הכל" - שימוש בתווית שקופה זהה למציג ה-Native
     with col_b1:
-        st.markdown("<p style='margin-bottom:8px;'>&nbsp;</p>", unsafe_allow_html=True)
+        st.write("") # מייצר את ה-Label הדיפולטיבי של Streamlit בדיוק באותו גובה
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
         if st.button("הכל", key="btn_all", use_container_width=True):
             st.session_state.date_range = (min_date, max_date)
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 5. כפתור "חודש אחרון" ללא margin
+    # 5. כפתור "חודש אחרון" - שימוש בתווית שקופה זהה
     with col_b2:
-        st.markdown("<p style='margin-bottom:8px;'>&nbsp;</p>", unsafe_allow_html=True)
+        st.write("") # מייצר את ה-Label הדיפולטיבי של Streamlit בדיוק באותו גובה
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
         if st.button("חודש אחרון", key="btn_month", use_container_width=True):
             one_month_ago = max_date - pd.Timedelta(days=30)
