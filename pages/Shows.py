@@ -43,7 +43,7 @@ st.markdown(
         color: #31333F !important;
         border: 1px solid #d6d8db !important;
         border-radius: 8px !important;
-        height: 38px !important;
+        height: 48px !important;
         font-size: 13px !important;
         font-weight: 500 !important;
         padding: 0px 4px !important;
