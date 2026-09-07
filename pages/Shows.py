@@ -124,18 +124,18 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. כפתור "הכל" - שימוש בתווית שקופה זהה למציג ה-Native
+    # 4. כפתור "הכל"
     with col_b1:
-        st.write("") # מייצר את ה-Label הדיפולטיבי של Streamlit בדיוק באותו גובה
+        st.write("")
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
         if st.button("הכל", key="btn_all", use_container_width=True):
             st.session_state.date_range = (min_date, max_date)
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 5. כפתור "חודש אחרון" - שימוש בתווית שקופה זהה
+    # 5. כפתור "חודש אחרון"
     with col_b2:
-        st.write("") # מייצר את ה-Label הדיפולטיבי של Streamlit בדיוק באותו גובה
+        st.write("")
         st.markdown('<div class="date-btn-wrapper">', unsafe_allow_html=True)
         if st.button("חודש אחרון", key="btn_month", use_container_width=True):
             one_month_ago = max_date - pd.Timedelta(days=30)
@@ -143,12 +143,12 @@ with st.container():
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # 6. אופן הצגת הנתונים
+    # 6. אופן הצגת הנתונים (ברירת מחדל: שבועית -> index=1)
     with col_freq:
         freq_option = st.selectbox(
             "אופן הצגת הנתונים:",
             options=["יומית", "שבועית", "חודשית"],
-            index=0
+            index=1
         )
 
 st.divider()
