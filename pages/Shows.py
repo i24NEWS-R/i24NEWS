@@ -6,17 +6,15 @@ import streamlit as st
 # הגדרת העמוד
 st.set_page_config(page_title="דשבורד תוכניות", layout="wide")
 
-# ===== עיצוב CSS מתקדם לימין (RTL), מרכוז והקטנת כפתורים =====
+# CSS: יישור RTL, מרכוז והצמדת אלמנטים לגובה אחיד
 st.markdown(
     """
     <style>
-    /* הגדרת כיווניות מימין לשמאל לכל העמוד */
     html, body, [data-testid="stAppViewContainer"], .main {
         direction: rtl !important;
         text-align: right !important;
     }
 
-    /* מרכוז התיבה המרכזית בדף */
     .main .block-container {
         max-width: 1100px;
         padding-top: 1.5rem;
@@ -24,48 +22,40 @@ st.markdown(
         margin: 0 auto;
     }
 
-    /* יישור לימין של כותרות, תווית רכיבים ותפריטים נפתחים */
     h1, h2, h3, h4, label, p, div {
         text-align: right !important;
     }
 
-    /* יישור טקסט בתוך התיבות הנפתחות ובחירת תאריך */
     div[data-baseweb="select"] > div, input {
         text-align: right !important;
         direction: rtl !important;
     }
 
-    /* יישור כרטיסי המדדים (Metrics) לימין */
     [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
         text-align: right !important;
         justify-content: flex-start !important;
     }
 
-    /* הקטנת כפתורי התאריכים המהירים שלא יתפסו נפח */
+    /* יישור גובה הכפתורים בדיוק לקו הכותרת "בחירת תאריכים:" */
     div[data-testid="column"] button {
-        padding: 2px 8px !important;
+        margin-top: 28px !important;
+        padding: 2px 4px !important;
         font-size: 12px !important;
-        min-height: 28px !important;
-        height: 28px !important;
-        margin-top: 2px !important;
+        height: 38px !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# נתיב לקובץ ה-CSV בתוך תיקיית pages
 DATA_PATH = os.path.join(os.path.dirname(__file__), "Shows.csv")
 
 @st.cache_data
 def load_data():
     df = pd.read_csv(DATA_PATH)
-    
-    # המרת תאריכים סלחנית לפורמט יום/חודש/שנה
     df['Date'] = pd.to_datetime(df['Date'], dayfirst=True, errors='coerce')
     df = df.dropna(subset=['Date'])
     
-    # חישוב נתח שוק
     df['Share'] = (df['i24'] / df['Reference'].replace(0, pd.NA)) * 100
     df['Share'] = df['Share'].fillna(0)
     
@@ -78,18 +68,18 @@ max_date = df['Date'].max().date()
 default_start = pd.to_datetime("2026-01-01").date()
 init_start = default_start if default_start >= min_date else min_date
 
-# ניהול מצב תאריכים (Session State)
 if "date_range" not in st.session_state:
     st.session_state.date_range = (init_start, max_date)
 
 st.title("דשבורד תוכניות")
 
-# ===== תפריט עליון שקוף ומהודק =====
+# ===== שורה אחת הדוקה וצרה לכל האלמנטים והכפתורים =====
 with st.container():
-    col1, col2, col3, col4 = st.columns([2.5, 1.5, 2.5, 1.5])
+    # חלוקת פרופורציות שדה קצרות להכנסת כל הרכיבים בשורה אחת
+    col_show, col_metric, col_date, col_btn1, col_btn2, col_freq = st.columns([1.8, 1.2, 1.8, 0.6, 0.8, 1.2])
 
-    # 1. בחירת תוכנית
-    with col1:
+    # 1. בחירת תוכנית (מקוכצת)
+    with col_show:
         all_titles = sorted(df['Title'].dropna().unique().tolist())
         default_title = "המהדורה המרכזית איי 24"
         title_index = all_titles.index(default_title) if default_title in all_titles else 0
@@ -100,35 +90,21 @@ with st.container():
             index=title_index
         )
 
-    # 2. בחירת מדד
-    with col2:
+    # 2. בחירת מדד (מקוכצת)
+    with col_metric:
         metric_option = st.selectbox(
             "בחירת מדד:",
             options=["רייטינג", "נתח שוק"],
             index=0
         )
 
-    # 3. בחירת תאריכים + כפתורים קטנים בשורה אחת
-    with col3:
-        lbl_col, btn_c1, btn_c2 = st.columns([1.2, 1, 1])
-        with lbl_col:
-            st.write("בחירת תאריכים:")
-        with btn_c1:
-            if st.button("הכל", use_container_width=True):
-                st.session_state.date_range = (min_date, max_date)
-                st.rerun()
-        with btn_c2:
-            if st.button("חודש אחרון", use_container_width=True):
-                one_month_ago = max_date - pd.Timedelta(days=30)
-                st.session_state.date_range = (max(min_date, one_month_ago), max_date)
-                st.rerun()
-
+    # 3. בחירת תאריכים
+    with col_date:
         date_range = st.date_input(
-            label="תאריכים",
+            label="בחירת תאריכים:",
             value=st.session_state.date_range,
             min_value=min_date,
-            max_value=max_date,
-            label_visibility="collapsed"
+            max_value=max_date
         )
 
         if isinstance(date_range, tuple) and len(date_range) == 2:
@@ -139,8 +115,21 @@ with st.container():
         else:
             start_date = end_date = date_range
 
-    # 4. אופן הצגת הנתונים
-    with col4:
+    # 4. כפתור "הכל" (צמוד לתאריכים)
+    with col_btn1:
+        if st.button("הכל", use_container_width=True):
+            st.session_state.date_range = (min_date, max_date)
+            st.rerun()
+
+    # 5. כפתור "חודש אחרון" (צמוד לתאריכים)
+    with col_btn2:
+        if st.button("חודש אחרון", use_container_width=True):
+            one_month_ago = max_date - pd.Timedelta(days=30)
+            st.session_state.date_range = (max(min_date, one_month_ago), max_date)
+            st.rerun()
+
+    # 6. אופן הצגת הנתונים (מקוכצת)
+    with col_freq:
         freq_option = st.selectbox(
             "אופן הצגת הנתונים:",
             options=["יומית", "שבועית", "חודשית"],
@@ -149,7 +138,7 @@ with st.container():
 
 st.divider()
 
-# ===== עיבוד הנתונים =====
+# ===== עיבוד והכנת הנתונים =====
 col_to_plot = 'i24' if metric_option == "רייטינג" else 'Share'
 
 filtered_df = df[
@@ -160,12 +149,11 @@ filtered_df = df[
 
 total_observations = len(filtered_df)
 
-# אגרגציה לפי התדירות
 if freq_option == "שבועית":
     plot_df = filtered_df.resample('W-MON', on='Date')[col_to_plot].mean().reset_index()
 elif freq_option == "חודשית":
     plot_df = filtered_df.resample('MS', on='Date')[col_to_plot].mean().reset_index()
-else:  # יומית
+else:
     plot_df = filtered_df[['Date', col_to_plot]].copy()
 
 plot_df[col_to_plot] = plot_df[col_to_plot].round(1)
@@ -180,7 +168,7 @@ else:
         y=col_to_plot,
         title=f"{selected_title} — {metric_option} ({freq_option})",
         markers=True,
-        line_shape="spline"  # הופך את הקו למעוגל
+        line_shape="spline"
     )
     
     fig.update_traces(
@@ -195,7 +183,7 @@ else:
         yaxis=dict(tickformat=".1f"),
         font=dict(size=14),
         height=450,
-        title_x=1.0  # הצמדת כותרת הגרף לימין
+        title_x=1.0
     )
     
     st.plotly_chart(fig, use_container_width=True)
