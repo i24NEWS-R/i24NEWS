@@ -1,168 +1,132 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8"><title>גריד פריימים מרוכז</title>
-    <style>
-        body { font: 13px system-ui, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 0 10px 10px; }
-        .controls { position: sticky; top: 0; z-index: 100; display: flex; gap: 8px; justify-content: center; align-items: center; padding: 10px; background: rgba(15,23,42,.92); backdrop-filter: blur(8px); border-bottom: 1px solid #334155; margin-bottom: 10px; flex-wrap: wrap; }
-        select, input, button { padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 12px; }
-        button { background: #3b82f6; cursor: pointer; font-weight: bold; border: none; } button:hover { background: #2563eb; }
-        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; scroll-margin-top: 60px; }
-        .item { text-align: center; scroll-margin-top: 60px; }
-        .time { font-size: 10px; color: #94a3b8; font-weight: bold; margin-bottom: 2px; }
-        .box { width: 100%; aspect-ratio: 16/9; background: #1e293b no-repeat center 0%/100% auto; border-radius: 4px; cursor: pointer; transition: transform .1s; }
-        .box:hover { transform: scale(1.04); } .box.loading { background-color: #334155; }
-        /* Modal */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
-        .modal.active { display: flex; }
-        .modal-content { width: 90vw; max-width: 900px; aspect-ratio: 16/9; background: #000 no-repeat center 0%/100% auto; border-radius: 8px; border: 1px solid #334155; }
-        .modal-hdr { margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
-        .btn-act { padding: 3px 8px; border-radius: 4px; text-decoration: none; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; border: none; }
-    </style>
+<meta charset="UTF-8">
+<title>גריד פריימים</title>
+<style>
+body{font:13px system-ui;background:#0f172a;color:#fff;margin:0;padding:0 10px 10px}
+.controls{position:sticky;top:0;z-index:100;display:flex;gap:8px;justify-content:center;align-items:center;padding:10px;background:#0f172af0;backdrop-filter:blur(8px);border-bottom:1px solid #334155;margin-bottom:10px;flex-wrap:wrap}
+select,input,button{padding:5px 8px;border:1px solid #334155;border-radius:4px;background:#1e293b;color:#fff;font-size:12px}
+button{background:#3b82f6;border:0;cursor:pointer;font-weight:bold}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:5px}
+.item{text-align:center;scroll-margin-top:60px}.time{font-size:10px;color:#94a3b8;font-weight:bold;margin-bottom:2px}
+.box{width:100%;aspect-ratio:16/9;background:#1e293b no-repeat center 0/100% auto;border-radius:4px;cursor:pointer;transition:.1s}
+.box:hover{transform:scale(1.04)}.box.loading{background-color:#334155}
+.modal{display:none;position:fixed;inset:0;z-index:1000;background:#000d;backdrop-filter:blur(5px);justify-content:center;align-items:center;flex-direction:column}
+.modal.active{display:flex}.modal-content{width:90vw;max-width:900px;aspect-ratio:16/9;background:#000 no-repeat center 0/100% auto;border:1px solid #334155;border-radius:8px}
+.modal-hdr{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.btn-act{padding:4px 10px;border:0;border-radius:4px;color:#fff;font-size:12px;font-weight:bold;cursor:pointer}
+</style>
 </head>
-<body>
 
+<body>
 <div class="controls">
-    <select id="channel">
-        <option value="kan11_hevc">כאן 11</option><option value="keshet_12_hevc" selected>קשת 12</option>
-        <option value="reshet_13_hevc">רשת 13</option><option value="ch14_hevc">עכשיו 14</option>
-        <option value="i24_he">i24NEWS</option><option value="channel16">ערוץ 16</option>
-    </select>
-    <select id="interval"><option value="10">כל 10 שניות</option><option value="30" selected>כל 30 שניות</option><option value="60">כל 60 שניות</option></select>
-    <input type="date" id="date">
-    <input type="time" id="startTime" value="06:00">
-    <input type="time" id="endTime" value="00:00">
-    <button id="loadBtn">טען</button>
-    <span style="border-right:1px solid #334155; padding-right:8px;">קפיצה לשעה: <select id="jumpTo"></select></span>
+<select id="channel">
+<option value="kan11_hevc">כאן 11</option><option value="keshet_12_hevc" selected>קשת 12</option>
+<option value="reshet_13_hevc">רשת 13</option><option value="ch14_hevc">עכשיו 14</option>
+<option value="i24_he">i24NEWS</option><option value="channel16">ערוץ 16</option>
+</select>
+<select id="interval"><option value="10">כל 10 שניות</option><option value="30" selected>כל 30 שניות</option><option value="60">כל 60 שניות</option></select>
+<input type="date" id="date"><input type="time" id="startTime" value="06:00"><input type="time" id="endTime" value="00:00">
+<button id="loadBtn">טען</button>
+<span style="border-right:1px solid #334155;padding-right:8px">קפיצה לשעה: <select id="jumpTo"></select></span>
 </div>
 
 <div class="grid" id="grid"></div>
 
 <div class="modal" id="modal">
-    <div class="modal-hdr">
-        <span id="mTime"></span>
-        <a id="mOrig" target="_blank" class="btn-act" style="background:#10b981">פתיחה בחלון חדש ↗</a>
-        <button id="mClose" class="btn-act" style="background:#ef4444">סגור ✕</button>
-    </div>
-    <div class="modal-content" id="mCnt"></div>
+<div class="modal-hdr"><span id="mTime"></span>
+<button id="mOrig" class="btn-act" style="background:#10b981">פתיחה בחלון חדש ↗</button>
+<button id="mClose" class="btn-act" style="background:#ef4444">סגירה ✕</button>
+</div>
+<div class="modal-content" id="mCnt"></div>
 </div>
 
 <script>
-(() => {
-    const ANCHOR_TIME = 811566740000, ANCHOR_DATE = new Date(2026, 8, 20, 6, 11, 0);
-    const $ = id => document.getElementById(id);
-    const dateIn = $('date'), grid = $('grid'), jump =$('jumpTo');
-    
-    dateIn.valueAsDate = new Date();
+(()=>{
+const A=811566740000,D=new Date(2026,8,20,6,11),$=id=>document.getElementById(id),
+ date=$('date'),grid=$('grid'),jump=$('jumpTo'),modal=$('modal'),cnt=$('mCnt');
+date.valueAsDate=new Date();
 
-    let queue = [], activeWorkers = 0, cache = {};
+let queue=[],workers=0,cache={},modalUrl='';
 
-    // טעינה טורית ממוקדת מסך ומיון גיאומטרי בזמן אמת
-    const processQueue = () => {
-        if (activeWorkers >= 2 || !queue.length) return;
-        queue.sort((a, b) => {
-            const rA = a.box.getBoundingClientRect(), rB = b.box.getBoundingClientRect();
-            return Math.abs(rA.top - rB.top) > 15 ? rA.top - rB.top : rB.right - rA.right;
-        });
+const process=()=>{
+ if(workers>1||!queue.length)return;
+ queue.sort((a,b)=>{
+  const A=a.box.getBoundingClientRect(),B=b.box.getBoundingClientRect();
+  return Math.abs(A.top-B.top)>15?A.top-B.top:B.right-A.right;
+ });
+ const t=queue.shift();
+ if(!t.vis&&!cache[t.url])return process();
+ workers++;t.box.classList.add('loading');
 
-        const task = queue.shift();
-        if (!task.vis && !cache[task.url]) return processQueue();
+ if(cache[t.url])return done(t);
+ const img=new Image();
+ img.onload=()=>{cache[t.url]=1;done(t)};
+ img.onerror=()=>{if((t.retry||0)<3)queue.push({...t,retry:(t.retry||0)+1});workers--;process()};
+ img.src=t.url;
+};
 
-        activeWorkers++;
-        task.box.classList.add('loading');
+function done(t){
+ t.box.style.backgroundImage=`url("${t.url}")`;
+ t.box.classList.remove('loading');workers--;process();
+}
 
-        if (cache[task.url]) {
-            task.box.style.backgroundImage = `url("${task.url}")`;
-            task.box.classList.remove('loading');
-            activeWorkers--; return processQueue();
-        }
+const obs=new IntersectionObserver(es=>es.forEach(e=>{
+ const box=e.target,url=box.dataset.src;
+ queue=queue.filter(t=>t.box!==box);
+ if(e.isIntersecting)queue.push({box,url,vis:1});
+ process();
+}),{rootMargin:'50px 0px'});
 
-        const img = new Image();
-        img.onload = () => {
-            cache[task.url] = true;
-            task.box.style.backgroundImage = `url("${task.url}")`;
-            task.box.classList.remove('loading');
-            activeWorkers--; processQueue();
-        };
-        img.onerror = () => {
-            task.retry = (task.retry || 0) + 1;
-            if (task.retry <= 3) queue.push(task);
-            activeWorkers--; processQueue();
-        };
-        img.src = task.url;
-    };
+function show(url,pos,time){
+ modalUrl=url;cnt.style.backgroundImage=`url("${url}")`;
+ cnt.style.backgroundPosition=pos;$('mTime').textContent='זמן שידור: '+time;
+ modal.classList.add('active');
+}
+function close(){modal.classList.remove('active')}
 
-    const obs = new IntersectionObserver(entries => {
-        entries.forEach(e => {
-            const box = e.target, url = box.dataset.src;
-            if (!url) return;
-            queue = queue.filter(t => t.box !== box);
-            if (e.isIntersecting) queue.push({ box, url, vis: true });
-            processQueue();
-        });
-    }, { rootMargin: '50px 0px' });
+$('mOrig').onclick=e=>{e.stopPropagation();modalUrl&&window.open(modalUrl,'_blank')};
+$('mClose').onclick=close;
+modal.onclick=e=>e.target===modal&&close();
+document.onkeydown=e=>e.key==='Escape'&&close();
 
-    // Modal
-    const showModal = (url, pos, t) => {
-        $('mCnt').style.backgroundImage = `url("${url}")`;
-        $('mCnt').style.backgroundPosition = pos;
-        $('mTime').textContent = 'זמן שידור: ' + t;
-        $('mOrig').href = url;
-        $('modal').classList.add('active');
-    };
-    const closeModal = () => $('modal').classList.remove('active');$('mClose').onclick = closeModal;
-    $('modal').onclick = e => e.target ===$('modal') && closeModal();
-    document.onkeydown = e => e.key === 'Escape' && closeModal();
+jump.onchange=()=> $('time-'+jump.value+':00')?.scrollIntoView({behavior:'smooth',block:'start'});
 
-    jump.onchange = () => {
-        const el = $('time-' + jump.value + ':00');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
+$('loadBtn').onclick=()=>{
+ obs.disconnect();queue=[];workers=0;cache={};grid.innerHTML='';jump.innerHTML='';
 
-    // מחולל הגריד הראשי
-    $('loadBtn').onclick = () => {
-        obs.disconnect();
-        queue = []; activeWorkers = 0; cache = {}; grid.innerHTML = ''; jump.innerHTML = '';
+ const [y,m,d]=date.value.split('-'),[sh,sm]=$('startTime').value.split(':'),
+       [eh,em]=$('endTime').value.split(':');
+ const start=new Date(y,m-1,d,sh,sm),end=new Date(y,m-1,d,eh,em);
+ if(end<=start)end.setDate(end.getDate()+1);
 
-        const [y, m, d] = dateIn.value.split('-'), [sh, sm] = $('startTime').value.split(':'), [eh, em] =$('endTime').value.split(':');
-        const start = new Date(y, m - 1, d, sh, sm), end = new Date(y, m - 1, d, eh, em);
-        if (end <= start) end.setDate(end.getDate() + 1);
+ for(let t=new Date(start);t<end;t.setMinutes(t.getMinutes()+30)){
+  const s=t.toTimeString().slice(0,5);jump.add(new Option(s,s));
+ }
 
-        // עדכון קפיצה לשעה
-        for (let cur = new Date(start); cur < end; cur.setMinutes(cur.getMinutes() + 30)) {
-            const t = cur.toTimeString().slice(0, 5);
-            jump.add(new Option(t, t));
-        }
+ const step=+$('interval').value,total=(end-start)/1000/step,ch=$('channel').value,
+       frag=document.createDocumentFragment();
 
-        const step = +$('interval').value, total = (end - start) / 1000 / step;
-        const frag = document.createDocumentFragment();
+ for(let i=0;i<total;i++){
+  const cur=new Date(start.getTime()+i*step*1000),sec=cur.getSeconds(),
+        time=cur.toTimeString().slice(0,8),min=new Date(cur-sec*1000),
+        st=A+Math.floor((min-D)/1000)*1000,
+        url=`https://d1zqtf09wb8nt5.cloudfront.net/file/streams/oil/freetv/live/${ch}/live.livx/slides(id=136;startTime=${st})`,
+        pos=`center ${sec*2}%`;
 
-        for (let i = 0; i < total; i++) {
-            const cur = new Date(start.getTime() + i * step * 1000);
-            const sec = cur.getSeconds(), timeStr = cur.toTimeString().slice(0, 8);
-            
-            const minTime = new Date(cur.getTime() - sec * 1000);
-            const startTime = ANCHOR_TIME + (Math.floor((minTime - ANCHOR_DATE) / 1000) * 1000);
-            const imgUrl = `https://d1zqtf09wb8nt5.cloudfront.net/file/streams/oil/freetv/live/${$('channel').value}/live.livx/slides(id=136;startTime=${startTime})`;
-            
-            // חישוב מיקום Sprite יחסי ב-CSS (20% לכל 10 שניות)
-            const bgPos = `center ${(sec / 10) * 20}%`;
+  const item=document.createElement('div');
+  item.className='item';item.id='time-'+time;
+  item.innerHTML=`<div class="time">${time}</div><div class="box" data-src="${url}" style="background-position:${pos}" title="לחץ להגדלה"></div>`;
 
-            const item = document.createElement('div');
-            item.className = 'item'; item.id = 'time-' + timeStr;
-            item.innerHTML = `<div class="time">${timeStr}</div><div class="box" data-src="${imgUrl}" style="background-position:${bgPos}" title="לחץ להגדלה"></div>`;
-            
-            const box = item.querySelector('.box');
-            box.onclick = () => showModal(imgUrl, bgPos, timeStr);
-            obs.observe(box);
-            frag.appendChild(item);
-        }
-        grid.appendChild(frag);
-    };
+  const box=item.lastElementChild;
+  box.onclick=()=>show(url,pos,time);obs.observe(box);frag.appendChild(item);
+ }
+ grid.appendChild(frag);
+};
 
-    $('loadBtn').click();
+$('loadBtn').click();
 })();
 </script>
-
 </body>
 </html>
