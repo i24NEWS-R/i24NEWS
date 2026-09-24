@@ -1,440 +1,166 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>גריד פריימים מתקדם - FreeTV</title>
+    <meta charset="UTF-8"><title>גריד פריימים מרוכז</title>
     <style>
-        body { font-family: system-ui, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 0 15px 15px 15px; }
-        
-        /* תפריט ננעץ בראש המסך */
-        .controls { 
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex; 
-            gap: 10px; 
-            justify-content: center;
-            align-items: center; 
-            padding: 12px;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid #334155;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .field-group { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #94a3b8; }
-        
-        select, input, button { padding: 6px 8px; border-radius: 4px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 13px; }
-        button { background: #3b82f6; cursor: pointer; border: none; font-weight: bold; padding: 6px 14px; }
-        button:hover { background: #2563eb; }
-        
-        /* גריד בעל 12 עמודות קבועות */
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(12, 1fr); 
-            gap: 6px; 
-            scroll-margin-top: 70px;
-        }
-        
-        .item { text-align: center; scroll-margin-top: 70px; }
-        .time { font-size: 10px; font-weight: bold; color: #94a3b8; margin-bottom: 2px; }
-        
-        .box { 
-            width: 100%; 
-            aspect-ratio: 16/9; 
-            background-color: #1e293b; 
-            background-repeat: no-repeat;
-            background-size: 100% auto;
-            border-radius: 4px; 
-            display: block; 
-            cursor: pointer;
-            transition: transform 0.15s ease, background-color 0.2s;
-        }
-
-        .box:hover { transform: scale(1.03); }
-        .box.loading { background-color: #334155; }
-        .box.error { background-color: #7f1d1d; }
-
-        /* מיקומי Sprite Sheet לפי שניות */
-        .box.f-00 { background-position: center 0%; }
-        .box.f-10 { background-position: center 20%; }
-        .box.f-20 { background-position: center 40%; }
-        .box.f-30 { background-position: center 60%; }
-        .box.f-40 { background-position: center 80%; }
-        .box.f-50 { background-position: center 100%; }
-
-        /* חלונית הגדלה (Modal/Lightbox) */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(6px);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
+        body { font: 13px system-ui, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 0 10px 10px; }
+        .controls { position: sticky; top: 0; z-index: 100; display: flex; gap: 8px; justify-content: center; align-items: center; padding: 10px; background: rgba(15,23,42,.92); backdrop-filter: blur(8px); border-bottom: 1px solid #334155; margin-bottom: 10px; flex-wrap: wrap; }
+        select, input, button { padding: 5px 8px; border-radius: 4px; border: 1px solid #334155; background: #1e293b; color: #fff; font-size: 12px; }
+        button { background: #3b82f6; cursor: pointer; font-weight: bold; border: none; } button:hover { background: #2563eb; }
+        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; scroll-margin-top: 60px; }
+        .item { text-align: center; scroll-margin-top: 60px; }
+        .time { font-size: 10px; color: #94a3b8; font-weight: bold; margin-bottom: 2px; }
+        .box { width: 100%; aspect-ratio: 16/9; background: #1e293b no-repeat center 0%/100% auto; border-radius: 4px; cursor: pointer; transition: transform .1s; }
+        .box:hover { transform: scale(1.04); } .box.loading { background-color: #334155; }
+        /* Modal */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
         .modal.active { display: flex; }
-        
-        .modal-content {
-            position: relative;
-            max-width: 90vw;
-            max-height: 80vh;
-            aspect-ratio: 16/9;
-            width: 960px;
-            background-color: #000;
-            background-repeat: no-repeat;
-            background-size: 100% auto;
-            border-radius: 8px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-            border: 1px solid #334155;
-        }
-
-        .modal-header {
-            margin-bottom: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            color: #f8fafc;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .open-btn {
-            background: #10b981;
-            color: white;
-            text-decoration: none;
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-            display: inline-flex;
-            align-items: center;
-        }
-        .open-btn:hover { background: #059669; }
-
-        .close-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-        }
-        .close-btn:hover { background: #dc2626; }
+        .modal-content { width: 90vw; max-width: 900px; aspect-ratio: 16/9; background: #000 no-repeat center 0%/100% auto; border-radius: 8px; border: 1px solid #334155; }
+        .modal-hdr { margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
+        .btn-act { padding: 3px 8px; border-radius: 4px; text-decoration: none; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; border: none; }
     </style>
 </head>
 <body>
 
 <div class="controls">
-    <div class="field-group">
-        <label for="channel">ערוץ:</label>
-        <select id="channel">
-            <option value="kan11_hevc">כאן 11</option>
-            <option value="keshet_12_hevc" selected>קשת 12</option>
-            <option value="reshet_13_hevc">רשת 13</option>
-            <option value="ch14_hevc">עכשיו 14</option>
-            <option value="i24_he">i24NEWS</option>
-            <option value="channel16">ערוץ 16</option>
-        </select>
-    </div>
-
-    <div class="field-group">
-        <label for="interval">תדירות:</label>
-        <select id="interval">
-            <option value="10">כל 10 שניות</option>
-            <option value="30" selected>כל 30 שניות</option>
-            <option value="60">כל 60 שניות</option>
-        </select>
-    </div>
-
-    <div class="field-group">
-        <label for="date">תאריך:</label>
-        <input type="date" id="date">
-    </div>
-
-    <div class="field-group">
-        <label for="startTime">התחלה:</label>
-        <input type="time" id="startTime" value="06:00">
-    </div>
-
-    <div class="field-group">
-        <label for="endTime">סיום:</label>
-        <input type="time" id="endTime" value="00:00">
-    </div>
-
+    <select id="channel">
+        <option value="kan11_hevc">כאן 11</option><option value="keshet_12_hevc" selected>קשת 12</option>
+        <option value="reshet_13_hevc">רשת 13</option><option value="ch14_hevc">עכשיו 14</option>
+        <option value="i24_he">i24NEWS</option><option value="channel16">ערוץ 16</option>
+    </select>
+    <select id="interval"><option value="10">כל 10 שניות</option><option value="30" selected>כל 30 שניות</option><option value="60">כל 60 שניות</option></select>
+    <input type="date" id="date">
+    <input type="time" id="startTime" value="06:00">
+    <input type="time" id="endTime" value="00:00">
     <button id="loadBtn">טען</button>
-
-    <div class="field-group" style="margin-right: 10px; border-right: 1px solid #334155; padding-right: 10px;">
-        <label for="jumpTo">קפיצה לשעה:</label>
-        <select id="jumpTo">
-            <!-- קפנדריות ייווצרו דינמית לפי השעות שנבחרו -->
-        </select>
-    </div>
+    <span style="border-right:1px solid #334155; padding-right:8px;">קפיצה לשעה: <select id="jumpTo"></select></span>
 </div>
 
 <div class="grid" id="grid"></div>
 
-<!-- חלונית הגדלת תמונה -->
 <div class="modal" id="modal">
-    <div class="modal-header">
-        <span id="modalTime"></span>
-        <div class="modal-actions">
-            <a href="#" target="_blank" class="open-btn" id="openOriginalBtn">פתיחה בחלון חדש ↗</a>
-            <button class="close-btn" id="closeModal">סגור ✕</button>
-        </div>
+    <div class="modal-hdr">
+        <span id="mTime"></span>
+        <a id="mOrig" target="_blank" class="btn-act" style="background:#10b981">פתיחה בחלון חדש ↗</a>
+        <button id="mClose" class="btn-act" style="background:#ef4444">סגור ✕</button>
     </div>
-    <div class="modal-content" id="modalContent"></div>
+    <div class="modal-content" id="mCnt"></div>
 </div>
 
 <script>
-(function() {
-    var EXACT_ANCHOR_TIME = 811566730000 + 10000; 
-    var EXACT_ANCHOR_DATE = new Date(2026, 8, 20, 6, 11, 0);
+(() => {
+    const ANCHOR_TIME = 811566740000, ANCHOR_DATE = new Date(2026, 8, 20, 6, 11, 0);
+    const $ = id => document.getElementById(id);
+    const dateIn = $('date'), grid = $('grid'), jump =$('jumpTo');
+    
+    dateIn.valueAsDate = new Date();
 
-    var dateInput = document.getElementById('date');
-    if (dateInput) {
-        var today = new Date();
-        var yyyy = today.getFullYear();
-        var mm = String(today.getMonth() + 1).padStart(2, '0');
-        var dd = String(today.getDate()).padStart(2, '0');
-        dateInput.value = yyyy + '-' + mm + '-' + dd;
-    }
+    let queue = [], activeWorkers = 0, cache = {};
 
-    var jumpSelect = document.getElementById('jumpTo');
-    var modal = document.getElementById('modal');
-    var modalContent = document.getElementById('modalContent');
-    var modalTime = document.getElementById('modalTime');
-    var closeModal = document.getElementById('closeModal');
-    var openOriginalBtn = document.getElementById('openOriginalBtn');
-
-    jumpSelect.onchange = function() {
-        var targetTime = this.value;
-        var el = document.getElementById('time-' + targetTime + ':00');
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    };
-
-    function openModal(imgUrl, frameClass, timeStr) {
-        modalContent.style.backgroundImage = 'url("' + imgUrl + '")';
-        modalContent.className = 'modal-content ' + frameClass;
-        modalTime.textContent = 'זמן שידור: ' + timeStr;
-        openOriginalBtn.href = imgUrl; // עדכון הקישור לתמונת ה-Sprite המקורית
-        modal.classList.add('active');
-    }
-
-    function hideModal() {
-        modal.classList.remove('active');
-        modalContent.style.backgroundImage = 'none';
-    }
-
-    closeModal.onclick = hideModal;
-    modal.onclick = function(e) {
-        if (e.target === modal) hideModal();
-    };
-
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') hideModal();
-    });
-
-    var queue = [];
-    var activeWorkerCount = 0;
-    var MAX_CONCURRENT_WORKERS = 2;
-    var loadedUrlsCache = {};
-
-    function processQueue() {
-        if (activeWorkerCount >= MAX_CONCURRENT_WORKERS || queue.length === 0) return;
-
-        queue.sort(function(a, b) {
-            var rectA = a.box.getBoundingClientRect();
-            var rectB = b.box.getBoundingClientRect();
-            
-            if (Math.abs(rectA.top - rectB.top) > 15) {
-                return rectA.top - rectB.top;
-            }
-            return rectB.right - rectA.right;
+    // טעינה טורית ממוקדת מסך ומיון גיאומטרי בזמן אמת
+    const processQueue = () => {
+        if (activeWorkers >= 2 || !queue.length) return;
+        queue.sort((a, b) => {
+            const rA = a.box.getBoundingClientRect(), rB = b.box.getBoundingClientRect();
+            return Math.abs(rA.top - rB.top) > 15 ? rA.top - rB.top : rB.right - rA.right;
         });
 
-        activeWorkerCount++;
-        var task = queue.shift();
-        var box = task.box;
-        var url = task.url;
+        const task = queue.shift();
+        if (!task.vis && !cache[task.url]) return processQueue();
 
-        if (!task.isIntersecting && !loadedUrlsCache[url]) {
-            activeWorkerCount--;
-            processQueue();
-            return;
+        activeWorkers++;
+        task.box.classList.add('loading');
+
+        if (cache[task.url]) {
+            task.box.style.backgroundImage = `url("${task.url}")`;
+            task.box.classList.remove('loading');
+            activeWorkers--; return processQueue();
         }
 
-        box.classList.add('loading');
-
-        if (loadedUrlsCache[url]) {
-            box.style.backgroundImage = 'url("' + url + '")';
-            box.classList.remove('loading');
-            activeWorkerCount--;
-            processQueue();
-            return;
-        }
-
-        var img = new Image();
-        img.onload = function() {
-            loadedUrlsCache[url] = true;
-            box.style.backgroundImage = 'url("' + url + '")';
-            box.classList.remove('loading');
-            activeWorkerCount--;
-            processQueue();
+        const img = new Image();
+        img.onload = () => {
+            cache[task.url] = true;
+            task.box.style.backgroundImage = `url("${task.url}")`;
+            task.box.classList.remove('loading');
+            activeWorkers--; processQueue();
         };
-
-        img.onerror = function() {
-            task.retryCount = (task.retryCount || 0) + 1;
-            if (task.retryCount <= 3) {
-                setTimeout(function() {
-                    queue.push(task);
-                    activeWorkerCount--;
-                    processQueue();
-                }, 500);
-            } else {
-                box.classList.remove('loading');
-                box.classList.add('error');
-                activeWorkerCount--;
-                processQueue();
-            }
+        img.onerror = () => {
+            task.retry = (task.retry || 0) + 1;
+            if (task.retry <= 3) queue.push(task);
+            activeWorkers--; processQueue();
         };
+        img.src = task.url;
+    };
 
-        img.src = url;
-    }
-
-    var imageObserver = new IntersectionObserver(function(entries) {
-        entries.forEach(function(entry) {
-            var box = entry.target;
-            var url = box.dataset.src;
-
+    const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+            const box = e.target, url = box.dataset.src;
             if (!url) return;
-
-            if (entry.isIntersecting) {
-                var existingIndex = queue.findIndex(function(t) { return t.box === box; });
-                if (existingIndex !== -1) queue.splice(existingIndex, 1);
-
-                queue.push({ box: box, url: url, isIntersecting: true });
-                processQueue();
-            } else {
-                var task = queue.find(function(t) { return t.box === box; });
-                if (task) {
-                    task.isIntersecting = false;
-                }
-            }
+            queue = queue.filter(t => t.box !== box);
+            if (e.isIntersecting) queue.push({ box, url, vis: true });
+            processQueue();
         });
-    }, {
-        rootMargin: '50px 0px'
-    });
+    }, { rootMargin: '50px 0px' });
 
-    function updateJumpOptions(startDate, endDate) {
-        jumpSelect.innerHTML = '';
-        var current = new Date(startDate.getTime());
-        
-        while (current < endDate) {
-            var hStr = String(current.getHours()).padStart(2, '0');
-            var mStr = String(current.getMinutes()).padStart(2, '0');
-            var timeVal = hStr + ':' + mStr;
+    // Modal
+    const showModal = (url, pos, t) => {
+        $('mCnt').style.backgroundImage = `url("${url}")`;
+        $('mCnt').style.backgroundPosition = pos;
+        $('mTime').textContent = 'זמן שידור: ' + t;
+        $('mOrig').href = url;
+        $('modal').classList.add('active');
+    };
+    const closeModal = () => $('modal').classList.remove('active');$('mClose').onclick = closeModal;
+    $('modal').onclick = e => e.target ===$('modal') && closeModal();
+    document.onkeydown = e => e.key === 'Escape' && closeModal();
 
-            var opt = document.createElement('option');
-            opt.value = timeVal;
-            opt.textContent = timeVal;
-            jumpSelect.appendChild(opt);
+    jump.onchange = () => {
+        const el = $('time-' + jump.value + ':00');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
-            current.setMinutes(current.getMinutes() + 30);
+    // מחולל הגריד הראשי
+    $('loadBtn').onclick = () => {
+        obs.disconnect();
+        queue = []; activeWorkers = 0; cache = {}; grid.innerHTML = ''; jump.innerHTML = '';
+
+        const [y, m, d] = dateIn.value.split('-'), [sh, sm] = $('startTime').value.split(':'), [eh, em] =$('endTime').value.split(':');
+        const start = new Date(y, m - 1, d, sh, sm), end = new Date(y, m - 1, d, eh, em);
+        if (end <= start) end.setDate(end.getDate() + 1);
+
+        // עדכון קפיצה לשעה
+        for (let cur = new Date(start); cur < end; cur.setMinutes(cur.getMinutes() + 30)) {
+            const t = cur.toTimeString().slice(0, 5);
+            jump.add(new Option(t, t));
         }
 
-        if (jumpSelect.options.length > 0) {
-            jumpSelect.selectedIndex = 0;
-        }
-    }
+        const step = +$('interval').value, total = (end - start) / 1000 / step;
+        const frag = document.createDocumentFragment();
 
-    function runGrid() {
-        var grid = document.getElementById('grid');
-        var channel = document.getElementById('channel').value;
-        var intervalSec = parseInt(document.getElementById('interval').value, 10);
-        var selectedDateVal = dateInput.value;
-        var startTimeVal = document.getElementById('startTime').value;
-        var endTimeVal = document.getElementById('endTime').value;
-        
-        imageObserver.disconnect();
-        queue = [];
-        activeWorkerCount = 0;
-        loadedUrlsCache = {};
-        grid.innerHTML = '';
-
-        if (!selectedDateVal) return;
-
-        var parts = selectedDateVal.split('-');
-        var startParts = startTimeVal.split(':');
-        var endParts = endTimeVal.split(':');
-
-        var startDate = new Date(parts[0], parts[1] - 1, parts[2], parseInt(startParts[0], 10), parseInt(startParts[1], 10), 0, 0);
-        var endDate = new Date(parts[0], parts[1] - 1, parts[2], parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0, 0);
-
-        if (endDate <= startDate) {
-            endDate.setDate(endDate.getDate() + 1);
-        }
-
-        updateJumpOptions(startDate, endDate);
-
-        var totalSeconds = (endDate.getTime() - startDate.getTime()) / 1000;
-        var totalSteps = Math.floor(totalSeconds / intervalSec);
-
-        var fragment = document.createDocumentFragment();
-
-        for (var i = 0; i < totalSteps; i++) {
-            var currentTime = new Date(startDate.getTime() + (i * intervalSec * 1000));
-            var secondsVal = currentTime.getSeconds();
+        for (let i = 0; i < total; i++) {
+            const cur = new Date(start.getTime() + i * step * 1000);
+            const sec = cur.getSeconds(), timeStr = cur.toTimeString().slice(0, 8);
             
-            var hours = String(currentTime.getHours()).padStart(2, '0');
-            var minutes = String(currentTime.getMinutes()).padStart(2, '0');
-            var seconds = String(secondsVal).padStart(2, '0');
-            var timeStr = hours + ':' + minutes + ':' + seconds;
-
-            var minuteTime = new Date(currentTime.getTime() - (secondsVal * 1000));
-            var diffInSeconds = Math.floor((minuteTime.getTime() - EXACT_ANCHOR_DATE.getTime()) / 1000);
-            var startTime = Math.floor((EXACT_ANCHOR_TIME + (diffInSeconds * 1000)) / 1000) * 1000;
-
-            var imgUrl = 'https://d1zqtf09wb8nt5.cloudfront.net/file/streams/oil/freetv/live/' + channel + '/live.livx/slides(id=136;startTime=' + startTime + ')';
-            var frameClass = 'f-' + seconds;
-
-            var item = document.createElement('div');
-            item.className = 'item';
-            item.id = 'time-' + timeStr;
-            item.innerHTML = 
-                '<div class="time">' + timeStr + '</div>' +
-                '<div class="box ' + frameClass + '" data-src="' + imgUrl + '" title="לחץ להגדלה"></div>';
+            const minTime = new Date(cur.getTime() - sec * 1000);
+            const startTime = ANCHOR_TIME + (Math.floor((minTime - ANCHOR_DATE) / 1000) * 1000);
+            const imgUrl = `https://d1zqtf09wb8nt5.cloudfront.net/file/streams/oil/freetv/live/${$('channel').value}/live.livx/slides(id=136;startTime=${startTime})`;
             
-            var boxEl = item.querySelector('.box');
-            
-            (function(url, fClass, tStr) {
-                boxEl.onclick = function() {
-                    openModal(url, fClass, tStr);
-                };
-            })(imgUrl, frameClass, timeStr);
+            // חישוב מיקום Sprite יחסי ב-CSS (20% לכל 10 שניות)
+            const bgPos = `center ${(sec / 10) * 20}%`;
 
-            imageObserver.observe(boxEl);
-            fragment.appendChild(item);
+            const item = document.createElement('div');
+            item.className = 'item'; item.id = 'time-' + timeStr;
+            item.innerHTML = `<div class="time">${timeStr}</div><div class="box" data-src="${imgUrl}" style="background-position:${bgPos}" title="לחץ להגדלה"></div>`;
+            
+            const box = item.querySelector('.box');
+            box.onclick = () => showModal(imgUrl, bgPos, timeStr);
+            obs.observe(box);
+            frag.appendChild(item);
         }
+        grid.appendChild(frag);
+    };
 
-        grid.appendChild(fragment);
-    }
-
-    document.getElementById('loadBtn').onclick = runGrid;
-    runGrid();
+    $('loadBtn').click();
 })();
 </script>
 
