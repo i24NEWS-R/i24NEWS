@@ -34,7 +34,7 @@
             display: grid; 
             grid-template-columns: repeat(12, 1fr); 
             gap: 6px; 
-            scroll-margin-top: 70px; /* מרווח לגלילה מדויקת אל מתחת לתפריט הנעוץ */
+            scroll-margin-top: 70px;
         }
         
         .item { text-align: center; scroll-margin-top: 70px; }
@@ -49,9 +49,10 @@
             border-radius: 4px; 
             display: block; 
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: transform 0.15s ease, background-color 0.2s;
         }
 
+        .box:hover { transform: scale(1.03); }
         .box.loading { background-color: #334155; }
         .box.error { background-color: #7f1d1d; }
 
@@ -62,6 +63,75 @@
         .box.f-30 { background-position: center 60%; }
         .box.f-40 { background-position: center 80%; }
         .box.f-50 { background-position: center 100%; }
+
+        /* חלונית הגדלה (Modal/Lightbox) */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(6px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .modal.active { display: flex; }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 80vh;
+            aspect-ratio: 16/9;
+            width: 960px;
+            background-color: #000;
+            background-repeat: no-repeat;
+            background-size: 100% auto;
+            border-radius: 8px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            border: 1px solid #334155;
+        }
+
+        .modal-header {
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .open-btn {
+            background: #10b981;
+            color: white;
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+        }
+        .open-btn:hover { background: #059669; }
+
+        .close-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .close-btn:hover { background: #dc2626; }
     </style>
 </head>
 <body>
@@ -75,6 +145,7 @@
             <option value="reshet_13_hevc">רשת 13</option>
             <option value="ch14_hevc">עכשיו 14</option>
             <option value="i24_he">i24NEWS</option>
+            <option value="channel16">ערוץ 16</option>
         </select>
     </div>
 
@@ -114,6 +185,18 @@
 
 <div class="grid" id="grid"></div>
 
+<!-- חלונית הגדלת תמונה -->
+<div class="modal" id="modal">
+    <div class="modal-header">
+        <span id="modalTime"></span>
+        <div class="modal-actions">
+            <a href="#" target="_blank" class="open-btn" id="openOriginalBtn">פתיחה בחלון חדש ↗</a>
+            <button class="close-btn" id="closeModal">סגור ✕</button>
+        </div>
+    </div>
+    <div class="modal-content" id="modalContent"></div>
+</div>
+
 <script>
 (function() {
     var EXACT_ANCHOR_TIME = 811566730000 + 10000; 
@@ -129,8 +212,12 @@
     }
 
     var jumpSelect = document.getElementById('jumpTo');
+    var modal = document.getElementById('modal');
+    var modalContent = document.getElementById('modalContent');
+    var modalTime = document.getElementById('modalTime');
+    var closeModal = document.getElementById('closeModal');
+    var openOriginalBtn = document.getElementById('openOriginalBtn');
 
-    // גלילה מדויקת לראש המסך (מתחת לתפריט הנעוץ)
     jumpSelect.onchange = function() {
         var targetTime = this.value;
         var el = document.getElementById('time-' + targetTime + ':00');
@@ -138,6 +225,28 @@
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
+
+    function openModal(imgUrl, frameClass, timeStr) {
+        modalContent.style.backgroundImage = 'url("' + imgUrl + '")';
+        modalContent.className = 'modal-content ' + frameClass;
+        modalTime.textContent = 'זמן שידור: ' + timeStr;
+        openOriginalBtn.href = imgUrl; // עדכון הקישור לתמונת ה-Sprite המקורית
+        modal.classList.add('active');
+    }
+
+    function hideModal() {
+        modal.classList.remove('active');
+        modalContent.style.backgroundImage = 'none';
+    }
+
+    closeModal.onclick = hideModal;
+    modal.onclick = function(e) {
+        if (e.target === modal) hideModal();
+    };
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') hideModal();
+    });
 
     var queue = [];
     var activeWorkerCount = 0;
@@ -234,7 +343,6 @@
         jumpSelect.innerHTML = '';
         var current = new Date(startDate.getTime());
         
-        // יצירת אפשרויות קפיצה בכל 30 דקות בתוך הטווח הנבחר
         while (current < endDate) {
             var hStr = String(current.getHours()).padStart(2, '0');
             var mStr = String(current.getMinutes()).padStart(2, '0');
@@ -249,7 +357,7 @@
         }
 
         if (jumpSelect.options.length > 0) {
-            jumpSelect.selectedIndex = 0; // ברירת המחדל היא שעת ההתחלה
+            jumpSelect.selectedIndex = 0;
         }
     }
 
@@ -280,7 +388,6 @@
             endDate.setDate(endDate.getDate() + 1);
         }
 
-        // עדכון רשימת הקפיצה לשעה לפי הטווח המדויק שנבחר
         updateJumpOptions(startDate, endDate);
 
         var totalSeconds = (endDate.getTime() - startDate.getTime()) / 1000;
@@ -309,11 +416,17 @@
             item.id = 'time-' + timeStr;
             item.innerHTML = 
                 '<div class="time">' + timeStr + '</div>' +
-                '<a href="' + imgUrl + '" target="_blank" class="box ' + frameClass + '" data-src="' + imgUrl + '" title="לחץ לצפייה בתמונת המקור"></a>';
+                '<div class="box ' + frameClass + '" data-src="' + imgUrl + '" title="לחץ להגדלה"></div>';
             
             var boxEl = item.querySelector('.box');
-            imageObserver.observe(boxEl);
+            
+            (function(url, fClass, tStr) {
+                boxEl.onclick = function() {
+                    openModal(url, fClass, tStr);
+                };
+            })(imgUrl, frameClass, timeStr);
 
+            imageObserver.observe(boxEl);
             fragment.appendChild(item);
         }
 
