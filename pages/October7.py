@@ -1,11 +1,14 @@
 from datetime import datetime
+import os
 import pandas as pd
 import streamlit as st
 import yt_dlp
 
 # הגדרת עמוד ב-Streamlit
 st.set_page_config(
-    page_title="דשבורד צפיות ומעורבות", page_icon="📊", layout="wide"
+    page_title="דשבורד צפיות ומעורבות - October 7",
+    page_icon="📊",
+    layout="wide",
 )
 
 # עיצוב מימין לשמאל (RTL)
@@ -24,11 +27,15 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("📊 דשבורד מעקב צפיות ומעורבות ברשתות החברתיות")
+st.title("📊 דשבורד מעקב צפיות ומעורבות - אירועי 7 באוקטובר")
 st.write(
-    "דשבורד זה שולף נתונים פומביים בזמן אמת עבור סרטוני פייסבוק, אינסטגרם,"
-    " טיקטוק, X ויוטיוב."
+    "דשבורד זה טוען נתונים מקובץ `October7.csv` הנמצא באותה התיקייה. הנתונים"
+    " מתעדכנים אך ורק בלחיצה על כפתור הרענון."
 )
+
+# הגדרת נתיב דינמי כך שקובץ ה-CSV יישמר בדיוק באותה התיקייה של קובץ הפייתון הנוכחי (pages/)
+script_dir = os.path.dirname(os.path.abspath(__file__))
+CACHE_FILE = os.path.join(script_dir, "October7.csv")
 
 # רשימת הקישורים המלאה
 URLS = [
@@ -100,7 +107,6 @@ URLS = [
 ]
 
 
-@st.cache_data(ttl=3600)
 def fetch_social_data():
   data = []
   ydl_opts = {"quiet": True, "skip_download": True}
@@ -134,27 +140,48 @@ def fetch_social_data():
             "תגובות": 0,
             "שיתופים": 0,
         })
-  return pd.DataFrame(data)
+  df = pd.DataFrame(data)
+  # שמירת הקובץ אוטומטית בדיוק באותה התיקייה תחת השם October7.csv
+  df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+  return df
 
 
-# כפתור רענון נתונים
-if st.button("🔄 רענן נתונים"):
-  st.cache_data.clear()
+# בדיקה האם קיים קובץ October7.csv באותה התיקייה
+if os.path.exists(CACHE_FILE):
+  df = pd.read_csv(CACHE_FILE)
+else:
+  with st.spinner(
+      "מבצע שליפה ראשונית של הנתונים ושמירה לקובץ October7.csv..."
+  ):
+    df = fetch_social_data()
 
-with st.spinner("טוען נתונים מהרשתות החברתיות..."):
-  df = fetch_social_data()
+# כפתור רענון ידני שמעדכן את הקובץ
+if st.button("🔄 רענן נתונים מחדש מהרשתות"):
+  with st.spinner("מעדכן נתונים מהרשתות החברתיות..."):
+    df = fetch_social_data()
+  st.success("הנתונים עודכנו ונשמרו בקובץ October7.csv בהצלחה!")
 
 # הצגת כרטיסי סיכום (Metrics)
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
-col2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
-col3.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
-col4.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
+col1.metric(
+    "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
+)
+col2.metric(
+    "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
+)
+col3.metric(
+    "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
+)
+col4.metric(
+    "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
+)
 
 st.markdown("---")
 st.subheader("פירוט לפי סרטון")
 
 # טבלה אינטראקטיבית עם קישורים לחיצים
 st.dataframe(
-    df, use_container_width=True, column_config={"קישור": st.column_config.LinkColumn("קישור ישיר")}
+    df,
+    use_container_width=True,
+    column_config={"קישור": st.column_config.LinkColumn("קישור ישיר")},
 )
