@@ -1,9 +1,36 @@
 from datetime import datetime
-import json
-import os
+import pandas as pd
+import streamlit as st
 import yt_dlp
 
-# רשימת הקישורים המלאה שסיפקת
+# הגדרת עמוד ב-Streamlit
+st.set_page_config(
+    page_title="דשבורד צפיות ומעורבות", page_icon="📊", layout="wide"
+)
+
+# עיצוב מימין לשמאל (RTL)
+st.markdown(
+    """
+    <style>
+    body, [data-testid="stAppViewContainer"] {
+        direction: rtl;
+        text-align: right;
+    }
+    .stDataFrame {
+        direction: rtl;
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+st.title("📊 דשבורד מעקב צפיות ומעורבות ברשתות החברתיות")
+st.write(
+    "דשבורד זה שולף נתונים פומביים בזמן אמת עבור סרטוני פייסבוק, אינסטגרם,"
+    " טיקטוק, X ויוטיוב."
+)
+
+# רשימת הקישורים המלאה
 URLS = [
     # Facebook Reels
     "https://www.facebook.com/reel/1060758100274123",
@@ -73,16 +100,15 @@ URLS = [
 ]
 
 
-def fetch_data():
+@st.cache_data(ttl=3600)
+def fetch_social_data():
   data = []
   ydl_opts = {"quiet": True, "skip_download": True}
-
   with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     for url in URLS:
       try:
         info = ydl.extract_info(url, download=False)
         platform = info.get("extractor_key", "Unknown")
-        title = info.get("title", "Lnk")[:40] + "..."
         views = info.get("view_count", 0) or 0
         likes = info.get("like_count", 0) or 0
         comments = info.get("comment_count", 0) or 0
@@ -91,111 +117,44 @@ def fetch_data():
             or info.get("share_count", 0)
             or 0
         )
-
         data.append({
-            "platform": platform,
-            "url": url,
-            "title": title,
-            "views": views,
-            "likes": likes,
-            "comments": comments,
-            "shares": shares,
+            "פלטפורמה": platform,
+            "קישור": url,
+            "צפיות": views,
+            "לייקים": likes,
+            "תגובות": comments,
+            "שיתופים": shares,
         })
-      except Exception as e:
+      except Exception:
         data.append({
-            "platform": "Error",
-            "url": url,
-            "title": str(e),
-            "views": 0,
-            "likes": 0,
-            "comments": 0,
-            "shares": 0,
+            "פלטפורמה": "שגיאה",
+            "קישור": url,
+            "צפיות": 0,
+            "לייקים": 0,
+            "תגובות": 0,
+            "שיתופים": 0,
         })
-  return data
+  return pd.DataFrame(data)
 
 
-def generate_html(data):
-  total_views = sum(item["views"] for item in data)
-  total_likes = sum(item["likes"] for item in data)
-  total_comments = sum(item["comments"] for item in data)
-  total_shares = sum(item["shares"] for item in data)
-  update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# כפתור רענון נתונים
+if st.button("🔄 רענן נתונים"):
+  st.cache_data.clear()
 
-  rows = ""
-  for item in data:
-    rows += f"""
-        <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item['platform']}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600 truncate max-w-xs"><a href="{item['url']}" target="_blank">צפה בסרטון</a></td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-bold">{item['views']:,}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item['likes']:,}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item['comments']:,}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{item['shares']:,}</td>
-        </tr>
-        """
+with st.spinner("טוען נתונים מהרשתות החברתיות..."):
+  df = fetch_social_data()
 
-  html_content = f"""<!DOCTYPE html>
-<html lang="he" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>דשבורד צפיות ומעורבות - סושיאל</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans p-6">
-    <div class="max-w-7xl mx-auto">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-extrabold text-gray-800">דשבורד מעקב תוכן (ציבורי)</h1>
-            <p class="text-gray-500 mt-2">עודכן לאחרונה: {update_time}</p>
-        </header>
+# הצגת כרטיסי סיכום (Metrics)
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
+col2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
+col3.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
+col4.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
 
-        <!-- סיכום כללי -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-gray-500 text-sm font-medium">סך הכל צפיות</h3>
-                <p class="text-3xl font-bold text-blue-600 mt-2">{total_views:,}</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-gray-500 text-sm font-medium">סך הכל לייקים</h3>
-                <p class="text-3xl font-bold text-red-500 mt-2">{total_likes:,}</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-gray-500 text-sm font-medium">סך הכל תגובות</h3>
-                <p class="text-3xl font-bold text-green-600 mt-2">{total_comments:,}</p>
-            </div>
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-gray-500 text-sm font-medium">סך הכל שיתופים</h3>
-                <p class="text-3xl font-bold text-purple-600 mt-2">{total_shares:,}</p>
-            </div>
-        </div>
+st.markdown("---")
+st.subheader("פירוט לפי סרטון")
 
-        <!-- טבלה מפורטת -->
-        <div class="bg-white shadow-sm rounded-xl overflow-hidden border border-gray-200">
-            <table class="min-w-full divide-y divide-gray-200 text-right">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">פלטפורמה</th>
-                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">קישור</th>
-                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">צפיות</th>
-                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">לייקים</th>
-                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">תגובות</th>
-                        <th class="px-6 py-3 text-xs font-medium text-gray-500 uppercase">שיתופים</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-200">
-                    {rows}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</body>
-</html>
-"""
-  with open("index.html", "w", encoding="utf-8") as f:
-    f.write(html_content)
-
-
-if __name__ == "__main__":
-  print("מעדכן נתונים...")
-  data = fetch_data()
-  generate_html(data)
-  print("הקובץ index.html נוצר בהצלחה!")
+# טבלה אינטראקטיבית עם קישורים לחיצים
+st.dataframe(
+    df, use_container_width=True, column_config={"קישור": st.column_config.LinkColumn("קישור ישיר")}
+)
