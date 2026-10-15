@@ -6,7 +6,7 @@ import yt_dlp
 
 # הגדרת עמוד ב-Streamlit
 st.set_page_config(
-    page_title="דשבורד צפיות ומעורבות - October 7",
+    page_title="October 7 - The last day of my life",
     page_icon="📊",
     layout="wide",
 )
@@ -27,7 +27,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("📊 דשבורד מעקב צפיות ומעורבות - אירועי 7 באוקטובר")
+st.title("October 7 - The last day of my life")
 st.write(
     "דשבורד זה טוען נתונים מקובץ `October7.csv` הנמצא באותה התיקייה. הנתונים"
     " מתעדכנים אך ורק בלחיצה על כפתור הרענון."
