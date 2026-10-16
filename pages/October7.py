@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# עיצוב מקיף מימין לשמאל (RTL), יישור למרכז ומראה מקצועי
+# עיצוב מקיף מימין לשמאל (RTL) ויישור מושלם למרכז
 st.markdown(
     """
     <style>
@@ -36,8 +36,8 @@ st.markdown(
         justify-content: center;
     }
 
-    /* עיצוב כותרות וקישורים */
-    h1, h2, h3, h4, p {
+    /* יישור כותרות וטקסטים למרכז */
+    h1, h2, h3, h4, p, div {
         direction: rtl !important;
         text-align: center !important;
     }
@@ -141,20 +141,30 @@ URLS = [
 
 
 def clean_title(title):
-  """ניקוי כותרת הסרטון מהצגת נתונים כמו צפיות ולייקים מתוך המחרוזת"""
+  """ניקוי עמוק של הכותרת מהמחרוזות המיותרות"""
   if not title:
     return "ללא כותרת"
-  # אם יש תו מפריד כמו |, לוקחים לרוב את החלק הנקי של הכותרת שאחריו
-  if "|" in title:
-    parts = title.split("|")
-    title = parts[-1].strip()
-  # הסרת תבניות נפוצות של צפיות ותגובות בתחילת המחרוזת
+
+  # הסרת תבניות של מספרים וצפיות בתחילת הכותרת (למשל "6.6K views · 196 reactions |")
   title = re.sub(
-      r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments).*?(?:\||$)",
+      r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments|צפיות|לייקים).*?[\•\|]",
       "",
       title,
       flags=re.IGNORECASE,
   )
+  title = re.sub(
+      r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments).*?",
+      "",
+      title,
+      flags=re.IGNORECASE,
+  )
+
+  # פיצול לפי | ולקיחת החלק הנקי
+  if "|" in title:
+    parts = title.split("|")
+    # בודקים איזה חלק הוא הכותרת האמיתית (לוקחים את החלק הארוך יותר או האחרון)
+    title = parts[-1].strip() if len(parts[-1].strip()) > 3 else parts[0].strip()
+
   return title.strip() or "ללא כותרת"
 
 
@@ -292,10 +302,10 @@ for plat in platforms:
 
   if not plat_df.empty:
     with st.container(border=True):
-      # כותרת פלטפורמה מודגשת בצבע המותג שלה
+      # שם פלטפורמה מודגש בבולד, צבוע בצבע המותג, ומיושר לאמצע (ללא אייקון)
       st.markdown(
-          f"<h2 style='color: {brand_color}; text-align: center;'>📌"
-          f" {plat}</h2>",
+          f"<h2 style='color: {brand_color}; text-align: center; font-weight:"
+          f" bold;'>{plat}</h2>",
           unsafe_allow_html=True,
       )
 
@@ -322,7 +332,6 @@ for plat in platforms:
             if pd.notna(row["תמונה"]) and str(row["תמונה"]).startswith(
                 "http"
             ):
-              # תמונה מוגדלת וברורה יותר
               st.image(row["תמונה"], width=180)
             else:
               st.info("אין תמונה")
@@ -330,9 +339,9 @@ for plat in platforms:
           with v_col2:
             title_text = row["כותרת"]
             link_url = row["קישור"]
-            # הקישור יושב ישירות על כותרת הסרטון בלבד, מיושר לימין/מרכז
+            # כותרת לחיצה, מיושרת למרכז וללא טקסטים מיותרים
             st.markdown(
-                f"<div style='text-align: right;'><a href='{link_url}'"
+                f"<div style='text-align: center;'><a href='{link_url}'"
                 f" target='_blank'><b style='font-size: 1.1em;'>{title_text}</b></a></div>",
                 unsafe_allow_html=True,
             )
@@ -347,9 +356,3 @@ for plat in platforms:
             st.metric("תגובות", f"{int(row['תגובות']):,}")
 
       # כפתור טעינה נוספת לפלטפורמה זו
-      if len(plat_df) > current_limit:
-        if st.button(f"📥 טעינה נוספת ({plat})", key=f"load_more_{plat}"):
-          st.session_state.limit_per_platform += 5
-          st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
