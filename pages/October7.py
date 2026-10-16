@@ -203,3 +203,153 @@ def fetch_social_data():
             "שיתופים": shares,
         })
       except Exception:
+        if "facebook.com" in url:
+          p = "פייסבוק"
+        elif "instagram.com" in url:
+          p = "אינסטגרם"
+        elif "tiktok.com" in url:
+          p = "טיקטוק"
+        elif "x.com" in url or "twitter.com" in url:
+          p = "X (טוויטר)"
+        elif "youtube.com" in url or "youtu.be" in url:
+          p = "יוטיוב"
+        else:
+          p = "שגיאה"
+
+        data.append({
+            "פלטפורמה": p,
+            "כותרת": "שגיאה בשליפת הנתונים",
+            "קישור": url,
+            "תמונה": "",
+            "צפיות": 0,
+            "לייקים": 0,
+            "תגובות": 0,
+            "שיתופים": 0,
+        })
+
+  df = pd.DataFrame(data)
+  df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+  return df
+
+
+# טעינת נתונים עם הודעת טעינה ברורה
+required_cols = [
+    "פלטפורמה",
+    "כותרת",
+    "קישור",
+    "תמונה",
+    "צפיות",
+    "לייקים",
+    "תגובות",
+    "שיתופים",
+]
+if os.path.exists(CACHE_FILE):
+  df = pd.read_csv(CACHE_FILE)
+  if not all(col in df.columns for col in required_cols):
+    with st.spinner("🔄 הנתונים נטענים..."):
+      df = fetch_social_data()
+else:
+  with st.spinner("🔄 הנתונים נטענים... מבצע שליפה ראשונית"):
+    df = fetch_social_data()
+
+# כפתור רענון בסיידבר
+with st.sidebar:
+  st.header("⚙️ הגדרות ובקרה")
+  if st.button("🔄 רענן נתונים מחדש מהרשתות"):
+    with st.spinner("🔄 הנתונים נטענים מחדש מהרשתות החברתיות..."):
+      df = fetch_social_data()
+    st.success("הנתונים עודכנו בהצלחה!")
+
+# --- חלק עליון: כרטיס סיכום כללי מרכזי ---
+with st.container(border=True):
+  st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
+  col1, col2, col3, col4 = st.columns(4)
+  col1.metric(
+      "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
+  )
+  col2.metric(
+      "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
+  )
+  col3.metric(
+      "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
+  )
+  col4.metric(
+      "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
+  )
+
+st.markdown("---")
+
+# ניהול מצב טעינה נוספת ב-Session State
+if "limit_per_platform" not in st.session_state:
+  st.session_state.limit_per_platform = 5
+
+# --- חלק תחתון: כרטיסים נפרדים מלוטשים עם צבעי מותג לכל פלטפורמה ---
+platforms = ["פייסבוק", "אינסטגרם", "טיקטוק", "X (טוויטר)", "יוטיוב"]
+
+for plat in platforms:
+  plat_df = df[df["פלטפורמה"] == plat]
+  brand_color = PLATFORM_COLORS.get(plat, "#333333")
+
+  if not plat_df.empty:
+    with st.container(border=True):
+      # כותרת פלטפורמה מודגשת בצבע המותג שלה
+      st.markdown(
+          f"<h2 style='color: {brand_color}; text-align: center;'>📌"
+          f" {plat}</h2>",
+          unsafe_allow_html=True,
+      )
+
+      # מדדים מסכמים לפלטפורמה במרכז
+      p1, p2, p3, p4 = st.columns(4)
+      p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
+      p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
+      p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
+      p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
+
+      st.markdown("---")
+
+      # הצגת סרטונים מוגבלים לפי כמות "טעינה נוספת"
+      current_limit = st.session_state.limit_per_platform
+      visible_df = plat_df.head(current_limit)
+
+      for index, row in visible_df.iterrows():
+        with st.container(border=True):
+          v_col1, v_col2, v_col3, v_col4, v_col5 = st.columns(
+              [1.5, 4, 1, 1, 1]
+          )
+
+          with v_col1:
+            if pd.notna(row["תמונה"]) and str(row["תמונה"]).startswith(
+                "http"
+            ):
+              # תמונה מוגדלת וברורה יותר
+              st.image(row["תמונה"], width=180)
+            else:
+              st.info("אין תמונה")
+
+          with v_col2:
+            title_text = row["כותרת"]
+            link_url = row["קישור"]
+            # הקישור יושב ישירות על כותרת הסרטון בלבד, מיושר לימין/מרכז
+            st.markdown(
+                f"<div style='text-align: right;'><a href='{link_url}'"
+                f" target='_blank'><b style='font-size: 1.1em;'>{title_text}</b></a></div>",
+                unsafe_allow_html=True,
+            )
+
+          with v_col3:
+            st.metric("צפיות", f"{int(row['צפיות']):,}")
+
+          with v_col4:
+            st.metric("לייקים", f"{int(row['לייקים']):,}")
+
+          with v_col5:
+            st.metric("תגובות", f"{int(row['תגובות']):,}")
+
+      # כפתור טעינה נוספת לפלטפורמה זו
+      if len(plat_df) > current_limit:
+        if st.button(f"📥 טעינה נוספת ({plat})", key=f"load_more_{plat}"):
+          st.session_state.limit_per_platform += 5
+          st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
