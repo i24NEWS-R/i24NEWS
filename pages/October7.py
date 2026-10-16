@@ -1,18 +1,17 @@
 from datetime import datetime
 import os
 import pandas as pd
-import requests
 import streamlit as st
 import yt_dlp
 
 # הגדרת עמוד ב-Streamlit
 st.set_page_config(
-    page_title="דשבורד צפיות ומעורבות - October 7",
+    page_title="October 7 - The last day of my life",
     page_icon="📊",
     layout="wide",
 )
 
-# עיצוב מימין לשמאל (RTL)
+# עיצוב מימין לשמאל (RTL) ושיפור נראות הטבלאות
 st.markdown(
     """
     <style>
@@ -28,19 +27,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("📊 דשבורד מעקב צפיות ומעורבות - אירועי 7 באוקטובר")
-st.write(
-    "הדשבורד שולף נתונים מאינסטגרם דרך RapidAPI (באמצעות Post by URL) ומיתרת"
-    " הפלטפורמות באמצעות yt-dlp."
-)
+# כותרת ראשית כפי שביקשת
+st.title("October 7 - The last day of my life")
 
-# הגדרת נתיב לקובץ ה-CSV באותה התיקייה
+# הגדרת נתיב דינמי לקובץ ה-CSV באותה התיקייה
 script_dir = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.join(script_dir, "October7.csv")
-
-# הגדרות RapidAPI לאינסטגרם
-RAPIDAPI_KEY = "5d0d7959b6msh8639260ea10e377p1749c4jsnb024816c6283"
-RAPIDAPI_HOST = "instagram-statistics-api.p.rapidapi.com"
 
 # רשימת הקישורים המלאה
 URLS = [
@@ -112,102 +104,112 @@ URLS = [
 ]
 
 
-def fetch_instagram_data(url):
-  """שליפת נתונים מפוסט אינסטגרם דרך ה-Endpoint החדש"""
-  endpoint = f"https://{RAPIDAPI_HOST}/post_by_url"
-  querystring = {"url": url}
-  headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": RAPIDAPI_HOST}
-
-  try:
-    response = requests.get(
-        endpoint, headers=headers, params=querystring, timeout=15
-    )
-    if response.status_code == 200:
-      res = response.json()
-      # חילוץ נתונים מתוך מבנה התשובה של ה-API
-      return {
-          "פלטפורמה": "Instagram",
-          "קישור": url,
-          "צפיות": res.get("view_count", 0)
-          or res.get("video_view_count", 0)
-          or 0,
-          "לייקים": res.get("likes", 0) or res.get("likes_count", 0) or 0,
-          "תגובות": res.get("comments", 0) or res.get("comments_count", 0) or 0,
-          "שיתופים": res.get("shares", 0) or res.get("shares_count", 0) or 0,
-      }
-  except Exception:
-    pass
-
-  return {
-      "פלטפורמה": "Instagram (Error)",
-      "קישור": url,
-      "צפיות": 0,
-      "לייקים": 0,
-      "תגובות": 0,
-      "שיתופים": 0,
-  }
-
-
 def fetch_social_data():
   data = []
   ydl_opts = {"quiet": True, "skip_download": True}
-
   with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     for url in URLS:
-      if "instagram.com" in url:
-        ig_data = fetch_instagram_data(url)
-        data.append(ig_data)
-      else:
-        try:
-          info = ydl.extract_info(url, download=False)
-          platform = info.get("extractor_key", "Unknown")
-          views = info.get("view_count", 0) or 0
-          likes = info.get("like_count", 0) or 0
-          comments = info.get("comment_count", 0) or 0
-          shares = (
-              info.get("repost_count", 0)
-              or info.get("share_count", 0)
-              or 0
-          )
-          data.append({
-              "פלטפורמה": platform,
-              "קישור": url,
-              "צפיות": views,
-              "לייקים": likes,
-              "תגובות": comments,
-              "שיתופים": shares,
-          })
-        except Exception:
-          data.append({
-              "פלטפורמה": "שגיאה",
-              "קישור": url,
-              "צפיות": 0,
-              "לייקים": 0,
-              "תגובות": 0,
-              "שיתופים": 0,
-          })
+      try:
+        info = ydl.extract_info(url, download=False)
+        ext = info.get("extractor_key", "").lower()
+
+        # זיהוי פלטפורמה ושיום נקי בעברית
+        if "facebook" in ext:
+          platform = "פייסבוק"
+        elif "instagram" in ext:
+          platform = "אינסטגרם"
+        elif "tiktok" in ext:
+          platform = "טיקטוק"
+        elif "twitter" in ext or "x" in ext:
+          platform = "X (טוויטר)"
+        elif "youtube" in ext:
+          platform = "יוטיוב"
+        else:
+          platform = info.get("extractor_key", "אחר")
+
+        title = info.get("title", "ללא כותרת")
+        thumbnail = info.get("thumbnail", "")
+        views = info.get("view_count", 0) or 0
+        likes = info.get("like_count", 0) or 0
+        comments = info.get("comment_count", 0) or 0
+        shares = (
+            info.get("repost_count", 0)
+            or info.get("share_count", 0)
+            or 0
+        )
+
+        data.append({
+            "פלטפורמה": platform,
+            "כותרת": title,
+            "קישור": url,
+            "תמונה": thumbnail,
+            "צפיות": views,
+            "לייקים": likes,
+            "תגובות": comments,
+            "שיתופים": shares,
+        })
+      except Exception:
+        # זיהוי לפי דומיין בקישור במקרה של שגיאה
+        if "facebook.com" in url:
+          p = "פייסבוק"
+        elif "instagram.com" in url:
+          p = "אינסטגרם"
+        elif "tiktok.com" in url:
+          p = "טיקטוק"
+        elif "x.com" in url or "twitter.com" in url:
+          p = "X (טוויטר)"
+        elif "youtube.com" in url or "youtu.be" in url:
+          p = "יוטיוב"
+        else:
+          p = "שגיאה"
+
+        data.append({
+            "פלטפורמה": p,
+            "כותרת": "שגיאה בשליפת הנתונים",
+            "קישור": url,
+            "תמונה": "",
+            "צפיות": 0,
+            "לייקים": 0,
+            "תגובות": 0,
+            "שיתופים": 0,
+        })
 
   df = pd.DataFrame(data)
   df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
   return df
 
 
-# טעינת נתונים מהמטמון או ביצוע שליפה ראשונית
+# טעינת נתונים מהמטמון המקומי או ביצוע שליפה ראשונית
+required_cols = [
+    "פלטפורמה",
+    "כותרת",
+    "קישור",
+    "תמונה",
+    "צפיות",
+    "לייקים",
+    "תגובות",
+    "שיתופים",
+]
 if os.path.exists(CACHE_FILE):
   df = pd.read_csv(CACHE_FILE)
+  if not all(col in df.columns for col in required_cols):
+    df = fetch_social_data()
 else:
   with st.spinner(
       "מבצע שליפה ראשונית של הנתונים ושמירה לקובץ October7.csv..."
   ):
     df = fetch_social_data()
 
-# כפתור רענון ידני
-if st.button("🔄 רענן נתונים מחדש מהרשתות"):
-  with st.spinner("מעדכן נתונים מאינסטגרם ושאר הרשתות..."):
-    df = fetch_social_data()
-  st.success("הנתונים עודכנו ונשמרו בקובץ October7.csv בהצלחה!")
+# כפתור רענון בסיידבר (תפריט הצד) לשמירה על ניקיון המסך הראשי
+with st.sidebar:
+  st.header("⚙️ הגדרות ובקרה")
+  if st.button("🔄 רענן נתונים מחדש מהרשתות"):
+    with st.spinner("מעדכן נתונים מכל הרשתות החברתיות..."):
+      df = fetch_social_data()
+    st.success("הנתונים עודכנו בהצלחה!")
 
-# סיכומים בראש העמוד
+# --- חלק עליון: כרטיסי סיכום כלליים של כל הפלטפורמות ---
+st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric(
     "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
@@ -223,10 +225,44 @@ col4.metric(
 )
 
 st.markdown("---")
-st.subheader("פירוט לפי סרטון")
 
-st.dataframe(
-    df,
-    use_container_width=True,
-    column_config={"קישור": st.column_config.LinkColumn("קישור ישיר")},
-)
+# --- חלק תחתון: 5 כרטיסים נפרדים לכל פלטפורמה ---
+platforms = ["פייסבוק", "אינסטגרם", "טיקטוק", "X (טוויטר)", "יוטיוב"]
+
+for plat in platforms:
+  plat_df = df[df["פלטפורמה"] == plat]
+
+  # הצגת כרטיס רק אם קיימים סרטונים לפלטפורמה זו
+  if not plat_df.empty:
+    st.subheader(f"📌 פלטפורמה: {plat}")
+
+    # סיכום נתונים פלטפורמתי מעל הטבלה
+    p1, p2, p3, p4 = st.columns(4)
+    p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
+    p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
+    p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
+    p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
+
+    # טבלה אינטראקטיבית עם תמונה ממוזערת וקישור
+    st.dataframe(
+        plat_df[[
+            "תמונה",
+            "כותרת",
+            "קישור",
+            "צפיות",
+            "לייקים",
+            "תגובות",
+            "שיתופים",
+        ]],
+        use_container_width=True,
+        column_config={
+            "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
+            "כותרת": st.column_config.TextColumn("כותרת הסרטון"),
+            "קישור": st.column_config.LinkColumn("קישור ישיר"),
+            "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
+            "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
+            "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
+            "שיתופים": st.column_config.NumberColumn("שיתופים", format="%d"),
+        },
+    )
+    st.markdown("---")
