@@ -11,23 +11,41 @@ st.set_page_config(
     layout="wide",
 )
 
-# עיצוב מימין לשמאל (RTL) ושיפור נראות הטבלאות
+# עיצוב מקיף מימין לשמאל (RTL) ומראה מקצועי
 st.markdown(
     """
     <style>
-    body, [data-testid="stAppViewContainer"] {
-        direction: rtl;
-        text-align: right;
+    /* כיוון כללי מימין לשמאל */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+        direction: rtl !important;
+        text-align: right !important;
     }
-    .stDataFrame {
+    
+    /* יישור טקסטים ומדדים */
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"], [data-testid="stMetricDelta"] {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
+    /* עיצוב כרטיסים כלליים */
+    .st-emotion-cache-1r6slb0, [data-testid="stVerticalBlock"] {
         direction: rtl;
+    }
+    
+    /* התאמת קישורים בכותרות */
+    a {
+        text-decoration: none !important;
+        color: #1f77b4;
+    }
+    a:hover {
+        text-decoration: underline !important;
     }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
-# כותרת ראשית כפי שביקשת
+# כותרת ראשית
 st.title("October 7 - The last day of my life")
 
 # הגדרת נתיב דינמי לקובץ ה-CSV באותה התיקייה
@@ -113,7 +131,6 @@ def fetch_social_data():
         info = ydl.extract_info(url, download=False)
         ext = info.get("extractor_key", "").lower()
 
-        # זיהוי פלטפורמה ושיום נקי בעברית
         if "facebook" in ext:
           platform = "פייסבוק"
         elif "instagram" in ext:
@@ -149,7 +166,6 @@ def fetch_social_data():
             "שיתופים": shares,
         })
       except Exception:
-        # זיהוי לפי דומיין בקישור במקרה של שגיאה
         if "facebook.com" in url:
           p = "פייסבוק"
         elif "instagram.com" in url:
@@ -179,7 +195,7 @@ def fetch_social_data():
   return df
 
 
-# טעינת נתונים מהמטמון המקומי או ביצוע שליפה ראשונית
+# טעינת נתונים עם הודעת סטטוס ברורה
 required_cols = [
     "פלטפורמה",
     "כותרת",
@@ -193,76 +209,103 @@ required_cols = [
 if os.path.exists(CACHE_FILE):
   df = pd.read_csv(CACHE_FILE)
   if not all(col in df.columns for col in required_cols):
-    df = fetch_social_data()
+    with st.spinner("🔄 הנתונים נטענים... מעדכן מבנה נתונים"):
+      df = fetch_social_data()
 else:
   with st.spinner(
-      "מבצע שליפה ראשונית של הנתונים ושמירה לקובץ October7.csv..."
+      "🔄 הנתונים נטענים... מבצע שליפה ראשונית ושמירה לקובץ October7.csv"
   ):
     df = fetch_social_data()
 
-# כפתור רענון בסיידבר (תפריט הצד) לשמירה על ניקיון המסך הראשי
+# כפתור רענון בסיידבר
 with st.sidebar:
   st.header("⚙️ הגדרות ובקרה")
   if st.button("🔄 רענן נתונים מחדש מהרשתות"):
-    with st.spinner("מעדכן נתונים מכל הרשתות החברתיות..."):
+    with st.spinner("🔄 הנתונים נטענים מחדש מהרשתות החברתיות..."):
       df = fetch_social_data()
     st.success("הנתונים עודכנו בהצלחה!")
 
-# --- חלק עליון: כרטיסי סיכום כלליים של כל הפלטפורמות ---
-st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
-col1, col2, col3, col4 = st.columns(4)
-col1.metric(
-    "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
-)
-col2.metric(
-    "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
-)
-col3.metric(
-    "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
-)
-col4.metric(
-    "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
-)
+# --- חלק עליון: כרטיס סיכום כללי מרכזי ---
+with st.container(border=True):
+  st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
+  col1, col2, col3, col4 = st.columns(4)
+  col1.metric(
+      "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
+  )
+  col2.metric(
+      "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
+  )
+  col3.metric(
+      "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
+  )
+  col4.metric(
+      "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
+  )
 
 st.markdown("---")
 
-# --- חלק תחתון: 5 כרטיסים נפרדים לכל פלטפורמה ---
+# ניהול מצב טעינה נוספת (Pagination / Load More) ב-Session State
+if "limit_per_platform" not in st.session_state:
+  st.session_state.limit_per_platform = 5
+
+# --- חלק תחתון: כרטיסים נפרדים ומלוטשים לכל פלטפורמה ---
 platforms = ["פייסבוק", "אינסטגרם", "טיקטוק", "X (טוויטר)", "יוטיוב"]
 
 for plat in platforms:
   plat_df = df[df["פלטפורמה"] == plat]
 
-  # הצגת כרטיס רק אם קיימים סרטונים לפלטפורמה זו
   if not plat_df.empty:
-    st.subheader(f"📌 פלטפורמה: {plat}")
+    with st.container(border=True):
+      st.markdown(f"## 📌 פלטפורמה: {plat}")
 
-    # סיכום נתונים פלטפורמתי מעל הטבלה
-    p1, p2, p3, p4 = st.columns(4)
-    p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
-    p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
-    p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
-    p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
+      # מדדים מסכמים לפלטפורמה
+      p1, p2, p3, p4 = st.columns(4)
+      p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
+      p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
+      p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
+      p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
 
-    # טבלה אינטראקטיבית עם תמונה ממוזערת וקישור
-    st.dataframe(
-        plat_df[[
-            "תמונה",
-            "כותרת",
-            "קישור",
-            "צפיות",
-            "לייקים",
-            "תגובות",
-            "שיתופים",
-        ]],
-        use_container_width=True,
-        column_config={
-            "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
-            "כותרת": st.column_config.TextColumn("כותרת הסרטון"),
-            "קישור": st.column_config.LinkColumn("קישור ישיר"),
-            "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
-            "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
-            "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
-            "שיתופים": st.column_config.NumberColumn("שיתופים", format="%d"),
-        },
-    )
-    st.markdown("---")
+      st.markdown("---")
+
+      # הצגת סרטונים מוגבלים לפי כמות "טעינה נוספת"
+      current_limit = st.session_state.limit_per_platform
+      visible_df = plat_df.head(current_limit)
+
+      for index, row in visible_df.iterrows():
+        # כרטיס נפרד לכל סרטון עם תמונה גדולה וכותרת לחיצה
+        with st.container(border=True):
+          v_col1, v_col2, v_col3, v_col4, v_col5 = st.columns(
+              [1.5, 4, 1, 1, 1]
+          )
+
+          with v_col1:
+            if pd.notna(row["תמונה"]) and str(row["תמונה"]).startswith(
+                "http"
+            ):
+              st.image(row["תמונה"], width=140)
+            else:
+              st.info("אין תמונה")
+
+          with v_col2:
+            # הכותרת כוללת את הקישור הישיר
+            title_text = row["כותרת"]
+            link_url = row["קישור"]
+            st.markdown(f"#### [{title_text}]({link_url})")
+            st.caption(f"פלטפורמה: {row['פלטפורמה']}")
+
+          with v_col3:
+            st.metric("צפיות", f"{int(row['צפיות']):,}")
+
+          with v_col4:
+            st.metric("לייקים", f"{int(row['לייקים']):,}")
+
+          with v_col5:
+            st.metric("תגובות", f"{int(row['תגובות']):,}")
+
+      # כפתור טעינה נוספת לפלטפורמה זו אם יש עוד פריטים להציג
+      if len(plat_df) > current_limit:
+        if st.button(f"📥 טעינה נוספת ({plat})", key=f"load_more_{plat}"):
+          st.session_state.limit_per_platform += 5
+          st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
