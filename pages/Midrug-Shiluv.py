@@ -1,301 +1,232 @@
-import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
+from datetime import datetime
 import os
-import random
+import pandas as pd
+import requests
+import streamlit as st
+import yt_dlp
 
-st.set_page_config(layout="wide", page_title="השוואת מדרוג ושילוב")
+# הגדרת עמוד ב-Streamlit
+st.set_page_config(
+    page_title="דשבורד צפיות ומעורבות - October 7",
+    page_icon="📊",
+    layout="wide",
+)
 
-st.markdown("""
-<style>
-    * { direction: rtl!important; text-align: right!important; }
-    h3 {margin-bottom:15px!important;}
-    .stAlert [data-testid="stMarkdownContainer"] p {font-size:0.8rem!important;}
-    .stRadio label div[data-testid="stMarkdownContainer"] p { font-size: 15px !important; }
-    .stRadio label { padding: 15px 0 !important; border-bottom: 1px solid #f3f4f6; display: flex !important; align-items: center !important; flex-direction: row !important; justify-content: flex-start !important; }
-    .stRadio label input[type="radio"] { margin-left: 0 !important; margin-right: 5px !important; }
-    .stRadio label div[data-testid="stMarkdownContainer"] { margin-right: 15px !important; }
-    div.row-widget.stRadio > div > label:first-of-type { margin-bottom: 10px; }
-    .custom-th { background-color: #f3f4f6 !important; font-weight: bold !important; color: #1f2937 !important; font-size: 14px !important; }
-    .pos-val { color: green !important; font-weight: bold !important; }
-    .neg-val { color: red !important; font-weight: bold !important; }
-    .zero-val { color: #374151 !important; font-weight: bold !important; }
-    div[data-testid="stPlotlyChart"] *, div[data-testid="stPlotlyChart"] { direction: ltr !important; text-align: left !important; unicode-bidi: isolate !important; }
-    .custom-table { width: 100% !important; border-collapse: collapse !important; margin-top: 15px !important; margin-bottom: 10px !important; font-family: inherit !important; direction: ltr !important; table-layout: fixed !important; }
-    .custom-th, .custom-td { border: 1px solid #e5e7eb !important; padding: 12px 8px !important; text-align: center !important; vertical-align: middle !important; direction: ltr !important; box-sizing: border-box !important; overflow: visible !important; word-wrap: break-word !important; white-space: normal !important; }
+# עיצוב מימין לשמאל (RTL)
+st.markdown(
+    """
+    <style>
+    body, [data-testid="stAppViewContainer"] {
+        direction: rtl;
+        text-align: right;
+    }
+    .stDataFrame {
+        direction: rtl;
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
 
-</style>
-""", unsafe_allow_html=True)
+st.title("📊 דשבורד מעקב צפיות ומעורבות - אירועי 7 באוקטובר")
+st.write(
+    "הדשבורד שולף נתונים מאינסטגרם דרך RapidAPI (באמצעות Post by URL) ומיתרת"
+    " הפלטפורמות באמצעות yt-dlp."
+)
 
-@st.cache_data
-def load_data():
-    return pd.read_csv(os.path.join(os.path.dirname(__file__), "Midrug-Shiluv.csv"))
+# הגדרת נתיב לקובץ ה-CSV באותה התיקייה
+script_dir = os.path.dirname(os.path.abspath(__file__))
+CACHE_FILE = os.path.join(script_dir, "October7.csv")
 
-df = load_data()
+# הגדרות RapidAPI לאינסטגרם
+RAPIDAPI_KEY = "5d0d7959b6msh8639260ea10e377p1749c4jsnb024816c6283"
+RAPIDAPI_HOST = "instagram-statistics-api.p.rapidapi.com"
 
-menu_col, chart_col = st.columns([1, 4], gap="small")
+# רשימת הקישורים המלאה
+URLS = [
+    # Facebook Reels
+    "https://www.facebook.com/reel/1060758100274123",
+    "https://www.facebook.com/reel/1098661659684872",
+    "https://www.facebook.com/reel/1102560435692402",
+    "https://www.facebook.com/reel/1421376970083491",
+    "https://www.facebook.com/reel/1427558415388540",
+    "https://www.facebook.com/reel/1575591177051076",
+    "https://www.facebook.com/reel/1834808051214925",
+    "https://www.facebook.com/reel/2003722767682462",
+    "https://www.facebook.com/reel/2004915936880315",
+    "https://www.facebook.com/reel/28594037286923487",
+    "https://www.facebook.com/reel/3189661697897533",
+    "https://www.facebook.com/reel/996450340148747",
+    # Instagram
+    "https://www.instagram.com/p/Deb5bDXD6Gs/",
+    "https://www.instagram.com/p/Deb5UJfFKU1/",
+    "https://www.instagram.com/p/Deb8nh5Du4y/",
+    "https://www.instagram.com/p/DeeYjQ2DnYf/",
+    "https://www.instagram.com/p/DeeYTozDXdP/",
+    "https://www.instagram.com/p/DeeYzU5lXQ_/",
+    "https://www.instagram.com/p/DeME-OfDP5u/",
+    "https://www.instagram.com/p/DeMFNk4iDQv/",
+    "https://www.instagram.com/p/DeMFUBUiZvQ/",
+    "https://www.instagram.com/p/DeOp3L4kzrY/",
+    "https://www.instagram.com/p/DeOpu9WDiJ6/",
+    "https://www.instagram.com/p/DeOxjLrkz4G/",
+    # TikTok
+    "https://www.tiktok.com/@i24news_ar/video/7693308032641404178",
+    "https://www.tiktok.com/@i24news_ar/video/7693605131383868673",
+    "https://www.tiktok.com/@i24news_ar/video/7696223468769086721",
+    "https://www.tiktok.com/@i24news_ar/video/7696505060129312001",
+    "https://www.tiktok.com/@i24news_en/video/7693865442019921160",
+    "https://www.tiktok.com/@i24news_en/video/7694255310751436050",
+    "https://www.tiktok.com/@i24news_en/video/7696201889632865544",
+    "https://www.tiktok.com/@i24news_en/video/7696547290550504712",
+    "https://www.tiktok.com/@i24news_fr/video/7693865674698935570",
+    "https://www.tiktok.com/@i24news_fr/video/7694255495154109714",
+    "https://www.tiktok.com/@i24news_fr/video/7696202386062232840",
+    "https://www.tiktok.com/@i24news_fr/video/7696547126687583496",
+    # X (Twitter)
+    "https://x.com/i24NEWS_AR/status/2107771873887154185?s=20",
+    "https://x.com/i24NEWS_AR/status/2108150421772771395?s=20",
+    "https://x.com/i24NEWS_AR/status/2110056520885141979?s=20",
+    "https://x.com/i24NEWS_AR/status/2110353427012403661?s=20",
+    "https://x.com/i24NEWS_EN/status/2107772249511973327?s=20",
+    "https://x.com/i24NEWS_EN/status/2108157434930057278?s=20",
+    "https://x.com/i24NEWS_EN/status/2110055247792279600?s=20",
+    "https://x.com/i24NEWS_EN/status/2110353863069126843?s=20",
+    "https://x.com/i24NEWS_FR/status/2107771596178092264?s=20",
+    "https://x.com/i24NEWS_FR/status/2108150891564179901?s=20",
+    "https://x.com/i24NEWS_FR/status/2110055870185058765?s=20",
+    "https://x.com/i24NEWS_FR/status/2110354237012185370?s=20",
+    # YouTube Shorts
+    "https://youtube.com/shorts/24gFRLpMR7E",
+    "https://youtube.com/shorts/7Fqb8Zl1-4w?feature=share",
+    "https://youtube.com/shorts/7VP1tvrK3F0",
+    "https://youtube.com/shorts/cWhNSpPDkY8",
+    "https://youtube.com/shorts/f2Ho2psrDHA",
+    "https://youtube.com/shorts/FViFNB73tjk",
+    "https://youtube.com/shorts/gc3gGTkyTJs",
+    "https://youtube.com/shorts/hgo53mbSKv4",
+    "https://youtube.com/shorts/LoumbMP6LTU",
+    "https://youtube.com/shorts/OOKIchREy-I",
+    "https://youtube.com/shorts/s7dlo-EO6ps",
+    "https://youtube.com/shorts/XSEI6HgRjzQ",
+]
 
-with menu_col:
-    #########################################
-    # תפריט צדדי - סינון נתונים
-    #########################################
-    with st.container(border=True):
-        st.markdown("### 📺 סינון נתונים")
-        st.info("כאן תוכלו לבחור איזה נתונים לראות: איזה מחקר לראות (אמצע שבוע או סוף שבוע), איזה גל להציג (מבין ארבעת הגלים) ובאיזה אוכלוסייה להתמקד")
-        sel_p = st.selectbox("בחירת מחקר", ["אמצע שבוע", "סוף שבוע"])
-        waves = ["גל 19 במאי", "גל 25 במאי", "ממוצע שני הגלים"] if sel_p == "אמצע שבוע" else ["גל 17 במאי", "גל 31 במאי", "ממוצע שני הגלים"]
-        sel_w = st.selectbox("בחירת גל", waves, index=2)
-        if sel_w == "ממוצע שני הגלים":
-            opts = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
-            sel_d = st.selectbox("פילוח דמוגרפי:", opts, index=list(opts).index("כללי") if "כללי" in opts else 0)
-            cat, val = ("כללי", "סהכ") if sel_d == "כללי" else sel_d.split(" - ", 1)
-        else:
-            st.selectbox("פילוח דמוגרפי", ["כללי (זמין רק בבחירת ממוצע שני הגלים ביחד)"], disabled=True)
-            cat, val = "כללי", "סהכ"
-    df_f = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == cat) & (df['demo_value'] == val)]
-    q_list = df_f['question_text'].unique().tolist()
-    if not q_list: 
-        st.warning("אין נתונים עבור הסינון שנבחר.")
-        st.stop()
 
-    #########################################
-    # תפריט צדדי - בחירת שאלה
-    #########################################
-    with st.container(border=True):
-        st.markdown("### 📋 בחירת שאלה")
-        st.info("השאלות כאן מתעדכנות בהתאם לסקר שבחרתם - אמצע שבוע או סופי שבוע")
+def fetch_instagram_data(url):
+  """שליפת נתונים מפוסט אינסטגרם דרך ה-Endpoint החדש"""
+  endpoint = f"https://{RAPIDAPI_HOST}/post_by_url"
+  querystring = {"url": url}
+  headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": RAPIDAPI_HOST}
 
-        sel_q = st.radio("", q_list, index=0, label_visibility="collapsed")
+  try:
+    response = requests.get(
+        endpoint, headers=headers, params=querystring, timeout=15
+    )
+    if response.status_code == 200:
+      res = response.json()
+      # חילוץ נתונים מתוך מבנה התשובה של ה-API
+      return {
+          "פלטפורמה": "Instagram",
+          "קישור": url,
+          "צפיות": res.get("view_count", 0)
+          or res.get("video_view_count", 0)
+          or 0,
+          "לייקים": res.get("likes", 0) or res.get("likes_count", 0) or 0,
+          "תגובות": res.get("comments", 0) or res.get("comments_count", 0) or 0,
+          "שיתופים": res.get("shares", 0) or res.get("shares_count", 0) or 0,
+      }
+  except Exception:
+    pass
 
-plot_df = df_f[df_f['question_text'] == sel_q]
-labels = plot_df['answer_text'].drop_duplicates().tolist()
+  return {
+      "פלטפורמה": "Instagram (Error)",
+      "קישור": url,
+      "צפיות": 0,
+      "לייקים": 0,
+      "תגובות": 0,
+      "שיתופים": 0,
+  }
 
-target_channels = ["ערוץ כאן 11", "ערוץ קשת 12", "ערוץ רשת 13", "ערוץ עכשיו 14", "ערוץ i24news (אפיק 15)"]
-channel_colors = {
-    "ערוץ כאן 11": "#AAAAAA", "ערוץ קשת 12": "#FAA046", "ערוץ רשת 13": "#82BE64",
-    "ערוץ עכשיו 14": "#DC5050", "ערוץ i24news (אפיק 15)": "#5A96D2"
-}
-available_channels = [c for c in target_channels if c in labels]
-card1_labels = available_channels if len(available_channels) > 1 else labels
 
-with chart_col:
-    #########################################
-    # כרטיס ראשון - סקר מול מדרוג: מסגרת
-    #########################################
-    with st.container(border=True):
-        if card1_labels:
-            #########################################
-            # כרטיס ראשון - סקר מול מדרוג: כותרת ותרשים
-            #########################################
-            st.markdown(f"### 📈 סקר מכון שילוב מול נתוני ועדת המדרוג")
-            
-            table_data = []
-            for ans in card1_labels:
-                s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
-                m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
-                if len(s_val) and len(m_val):
-                    table_data.append((ans, m_val[0] - s_val[0]))
+def fetch_social_data():
+  data = []
+  ydl_opts = {"quiet": True, "skip_download": True}
 
-            fig = go.Figure()
-            wrapped_labels = card1_labels
-            
-            for i, ans in enumerate(card1_labels):
-                s_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
-                m_val = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
-                if len(s_val) and len(m_val):
-                    fig.add_trace(go.Scatter(x=[wrapped_labels[i], wrapped_labels[i]], y=[m_val[0], s_val[0]], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
-            
-            def add_points(source_filter, source_name):
-                x_vals, y_vals, hover_vals, txt_vals, txt_pos = [], [], [], [], []
-                color_map = {'סקר שילוב': '#2563eb', 'הוועדה למדרוג': '#ea580c'}
-                
-                for i, ans in enumerate(card1_labels):
-                    r_s = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'שילוב')]['percentage'].values
-                    r_m = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == 'מדרוג')]['percentage'].values
-                    r_src = plot_df[(plot_df['answer_text'] == ans) & (plot_df['source'] == source_filter)]['percentage'].values
-                    
-                    if len(r_s) and len(r_m) and len(r_src):
-                        s, m, val = round(r_s[0], 1), round(r_m[0], 1), round(r_src[0], 1)
-                        x_vals.append(wrapped_labels[i]); y_vals.append(val)
-                        hover_vals.append(f"<b>{source_name}</b><br>אחוז: {val}%<extra></extra>")
-                        txt_vals.append(f"<b>{val}%</b>")
-                        txt_pos.append("top center" if s == m else "bottom center" if val <= min(s, m) else "top center")
-                        
-                if x_vals:
-                    fig.add_trace(go.Scatter(
-                        x=x_vals, y=y_vals, mode="markers+text", name=source_name,
-                        marker=dict(color=color_map.get(source_name, '#000'), size=14, line=dict(color='white', width=2)),
-                        text=txt_vals, textfont=dict(size=12, color=color_map.get(source_name, '#000'), weight="bold"),
-                        textposition=txt_pos, hovertemplate=hover_vals
-                    ))
+  with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+    for url in URLS:
+      if "instagram.com" in url:
+        ig_data = fetch_instagram_data(url)
+        data.append(ig_data)
+      else:
+        try:
+          info = ydl.extract_info(url, download=False)
+          platform = info.get("extractor_key", "Unknown")
+          views = info.get("view_count", 0) or 0
+          likes = info.get("like_count", 0) or 0
+          comments = info.get("comment_count", 0) or 0
+          shares = (
+              info.get("repost_count", 0)
+              or info.get("share_count", 0)
+              or 0
+          )
+          data.append({
+              "פלטפורמה": platform,
+              "קישור": url,
+              "צפיות": views,
+              "לייקים": likes,
+              "תגובות": comments,
+              "שיתופים": shares,
+          })
+        except Exception:
+          data.append({
+              "פלטפורמה": "שגיאה",
+              "קישור": url,
+              "צפיות": 0,
+              "לייקים": 0,
+              "תגובות": 0,
+              "שיתופים": 0,
+          })
 
-            add_points('שילוב', 'סקר שילוב')
-            add_points('מדרוג', 'הוועדה למדרוג')
+  df = pd.DataFrame(data)
+  df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+  return df
 
-            all_vals = [val for trace in fig.data if trace.y for val in trace.y if val is not None and val >= 0]
-            my = max(all_vals, default=100) * 1.15
-            
-            fig.update_layout(
-                margin=dict(l=250, r=50, t=0, b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                height=380, legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", yanchor="top"),
-                xaxis=dict(side="bottom", showticklabels=False, showgrid=False, zeroline=False),
-                yaxis=dict(side="left", range=[-1, my], showticklabels=False, showgrid=True, gridcolor="#f3f4f6", zeroline=False)
-            )
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            
-            #########################################
-            # כרטיס ראשון - סקר מול מדרוג: טבלה
-            #########################################
-            if table_data:
-                col_count = len(table_data) + 1 
-                all_diffs = [diff for _, diff in table_data]
-                mean_diff = sum(all_diffs) / len(all_diffs) if all_diffs else 0
-                
-                html_code = f'<table class="custom-table"><thead><tr>'
-                html_code += f'<th class="custom-th">פרמטר</th>' 
-                for ans, _ in table_data: 
-                    html_code += f'<th class="custom-th">{ans}</th>'
-                html_code += "</tr></thead><tbody>"
-                
-                html_code += "<tr>"
-                html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי אבסולוטי - מדרוג פחות סקר</td>'
-                for _, diff in table_data:
-                    cls = "pos-val" if diff > 0 else "neg-val" if diff < 0 else "zero-val"
-                    html_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
-                html_code += "</tr>"
-                
-                html_code += "<tr>"
-                html_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">שינוי מחושב ביחס להטיה הכללית</td>'
-                for _, diff in table_data:
-                    adj_diff = diff - mean_diff
-                    cls = "pos-val" if adj_diff > 0 else "neg-val" if adj_diff < 0 else "zero-val"
-                    html_code += f'<td class="custom-td {cls}">{"+" if adj_diff > 0 else ""}{adj_diff:.1f}%</td>'
-                html_code += "</tr></tbody></table>"
-                
-                st.markdown(html_code, unsafe_allow_html=True)
-        else:
-            st.info("אין נתונים להצגת תרשים עבור שאלה זו.")
 
-    if len(available_channels) > 1:
-       
-        #########################################
-        # כרטיס שני - נתח שוק: מסגרת
-        #########################################
-        with st.container(border=True):
-            #########################################
-            # כרטיס שני - נתח שוק: תרשים
-            #########################################
-            st.markdown("### 📊 נתח שוק יחסי מתוך ערוצי הברודקאסט")
-            fig_sov = go.Figure()
-            
-            for idx, (s_name, s_key) in enumerate([("הוועדה למדרוג", "מדרוג"), ("סקר שילוב", "שילוב")]):
-                s_data = plot_df[plot_df['source'] == s_key]
-                c_vals = [s_data[s_data['answer_text'] == c]['percentage'].values[0] if not s_data[s_data['answer_text'] == c].empty else 0 for c in available_channels]
-                sum_5 = sum(c_vals)
-                
-                if sum_5 > 0:
-                    for i, c in enumerate(available_channels):
-                        norm = (c_vals[i] / sum_5) * 100
-                        fig_sov.add_trace(go.Bar(
-                            name=c, legendgroup=c, showlegend=(idx == 0), y=[s_name], x=[norm], orientation='h',
-                            marker=dict(color=channel_colors.get(c, "#000"), line=dict(color='white', width=2)),
-                            hovertemplate=f"{c}<br>נתח מתוך הברודקאסט: %{{x:.1f}}%<extra></extra>",
-                            text=f"{norm:.1f}%" if norm > 4.5 else "", textposition='inside', insidetextanchor="middle",
-                            textfont=dict(color="white", weight="bold", size=12)
-                        ))
-            
-            fig_sov.update_layout(
-                barmode='stack', height=200, autosize=True, bargap=0.25, margin=dict(l=125, r=20, t=0, b=0),
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=True,
-                legend=dict(orientation="h", y=1.1, x=0.5, xanchor="center", font=dict(size=11)),
-                xaxis=dict(showticklabels=False, showgrid=False, range=[0, 100]),
-                yaxis=dict(tickfont=dict(weight="bold", size=14))
-            )
-            st.plotly_chart(fig_sov, use_container_width=True, config={'displayModeBar': False})
+# טעינת נתונים מהמטמון או ביצוע שליפה ראשונית
+if os.path.exists(CACHE_FILE):
+  df = pd.read_csv(CACHE_FILE)
+else:
+  with st.spinner(
+      "מבצע שליפה ראשונית של הנתונים ושמירה לקובץ October7.csv..."
+  ):
+    df = fetch_social_data()
 
-            #########################################
-            # כרטיס שני - נתח שוק: טבלה
-            #########################################
-            sov_table_data = []
-            s_data_full = plot_df[plot_df['source'] == 'שילוב']
-            m_data_full = plot_df[plot_df['source'] == 'מדרוג']
-            
-            sum_s_vals = sum([s_data_full[s_data_full['answer_text'] == c]['percentage'].values[0] if not s_data_full[s_data_full['answer_text'] == c].empty else 0 for c in available_channels])
-            sum_m_vals = sum([m_data_full[m_data_full['answer_text'] == c]['percentage'].values[0] if not m_data_full[m_data_full['answer_text'] == c].empty else 0 for c in available_channels])
+# כפתור רענון ידני
+if st.button("🔄 רענן נתונים מחדש מהרשתות"):
+  with st.spinner("מעדכן נתונים מאינסטגרם ושאר הרשתות..."):
+    df = fetch_social_data()
+  st.success("הנתונים עודכנו ונשמרו בקובץ October7.csv בהצלחה!")
 
-            if sum_s_vals > 0 and sum_m_vals > 0:
-                for c in available_channels:
-                    s_pct = s_data_full[s_data_full['answer_text'] == c]['percentage'].values[0] if not s_data_full[s_data_full['answer_text'] == c].empty else 0
-                    m_pct = m_data_full[m_data_full['answer_text'] == c]['percentage'].values[0] if not m_data_full[m_data_full['answer_text'] == c].empty else 0
-                    
-                    s_norm = (s_pct / sum_s_vals) * 100
-                    m_norm = (m_pct / sum_m_vals) * 100
-                    sov_diff = m_norm - s_norm
-                    sov_table_data.append((c, sov_diff))
+# סיכומים בראש העמוד
+col1, col2, col3, col4 = st.columns(4)
+col1.metric(
+    "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
+)
+col2.metric(
+    "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
+)
+col3.metric(
+    "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
+)
+col4.metric(
+    "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
+)
 
-            if sov_table_data:
-                html_sov_code = f'<table class="custom-table"><thead><tr>'
-                html_sov_code += f'<th class="custom-th">פרמטר</th>'
-                for c, _ in sov_table_data:
-                    html_sov_code += f'<th class="custom-th">{c}</th>'
-                html_sov_code += "</tr></thead><tbody>"
-                
-                html_sov_code += "<tr>"
-                html_sov_code += f'<td class="custom-td" style="font-weight: bold; background-color: #f9fafb;">פער (מדרוג פחות סקר)</td>'
-                for _, diff in sov_table_data:
-                    cls = "pos-val" if diff > 0 else "neg-val" if diff < 0 else "zero-val"
-                    html_sov_code += f'<td class="custom-td {cls}">{"+" if diff > 0 else ""}{diff:.1f}%</td>'
-                html_sov_code += "</tr></tbody></table>"
-                
-                st.markdown(html_sov_code, unsafe_allow_html=True)
+st.markdown("---")
+st.subheader("פירוט לפי סרטון")
 
-    has_i24 = any("i24" in ans for ans in labels)
-    if sel_w == "ממוצע שני הגלים" and has_i24:
-        
-        #########################################
-        # כרטיס שלישי - פירוט i24 (תרשים בלבד)
-        #########################################
-        with st.container(border=True):
-            i24_ans = next((ans for ans in labels if "i24" in ans), None)
-            st.markdown(f"### 👨‍👩‍👧‍👦 {sel_q} &nbsp;–&nbsp; i24news")
-            
-            d_table, d_wrap, d_s_vals, d_m_vals = [], [], [], []
-            all_demo = df[df['wave'] == "ממוצע שני הגלים"].apply(lambda x: "כללי" if x['demo_category'] == "כללי" else f"{x['demo_category']} - {x['demo_value']}", axis=1).unique()
-            
-            for d_opt in all_demo:
-                d_cat, d_val = ("כללי", "סהכ") if d_opt == "כללי" else d_opt.split(" - ", 1)
-                d_df = df[(df['period'] == sel_p) & (df['wave'] == sel_w) & (df['demo_category'] == d_cat) & (df['demo_value'] == d_val)]
-                d_plot = d_df[(d_df['question_text'] == sel_q) & (d_df['answer_text'] == i24_ans)]
-                
-                if not d_plot.empty:
-                    s_v = d_plot[d_plot['source'] == 'שילוב']['percentage'].values
-                    m_v = d_plot[d_plot['source'] == 'מדרוג']['percentage'].values
-                    if len(s_v) and len(m_v):
-                        d_table.append((d_opt, m_v[0] - s_v[0]))
-                        d_wrap.append(f"<span style='display: inline-block; width: 100%; white-space: normal; text-align: center;'>{d_opt}</span>")
-                        d_s_vals.append(round(s_v[0], 1)); d_m_vals.append(round(m_v[0], 1))
-
-            if d_table:
-                fig_d = go.Figure()
-                for idx, d_lbl in enumerate(d_wrap):
-                    fig_d.add_trace(go.Scatter(x=[d_s_vals[idx], d_m_vals[idx]], y=[d_lbl, d_lbl], mode="lines", line=dict(color="#000", width=2), showlegend=False, hoverinfo="skip"))
-                
-                fig_d.add_trace(go.Scatter(
-                    x=d_s_vals, y=d_wrap, mode="markers+text", name="סקר שילוב", marker=dict(color='#2563eb', size=14, line=dict(color='white', width=2)),
-                    text=[f"<b>{val}%</b>" for val in d_s_vals], textfont=dict(size=12, color='#2563eb', weight="bold"),
-                    textposition=["middle left" if s <= m else "middle right" for s, m in zip(d_s_vals, d_m_vals)], hovertemplate="<b>סקר שילוב</b><br>אחוז: %{x}%<extra></extra>"
-                ))
-                fig_d.add_trace(go.Scatter(
-                    x=d_m_vals, y=d_wrap, mode="markers+text", name="הוועדה למדרוג", marker=dict(color='#ea580c', size=14, line=dict(color='white', width=2)),
-                    text=[f"<b>{val}%</b>" for val in d_m_vals], textfont=dict(size=12, color='#ea580c', weight="bold"),
-                    textposition=["middle right" if m >= s else "middle left" for s, m in zip(d_s_vals, d_m_vals)], hovertemplate="<b>הוועדה למדרוג</b><br>אחוז: %{x}%<extra></extra>"
-                ))
-                
-                mx_d = max(d_s_vals + d_m_vals, default=100) * 1.15
-                fig_d.update_layout(
-                    margin=dict(l=125, r=20, t=20, b=20), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    height=max(250, len(d_table) * 65), legend=dict(orientation="h", y=1.05, x=0.5, xanchor="center", yanchor="top"),
-                    xaxis=dict(side="top", range=[-1, mx_d], showgrid=True, gridcolor="#f3f4f6", zeroline=False, ticksuffix="%"),
-                    yaxis=dict(side="left", categoryorder="array", categoryarray=d_wrap[::-1], showticklabels=True, tickfont=dict(size=11, weight="bold"))
-                )
-                st.plotly_chart(fig_d, use_container_width=True, config={'displayModeBar': False})
+st.dataframe(
+    df,
+    use_container_width=True,
+    column_config={"קישור": st.column_config.LinkColumn("קישור ישיר")},
+)
