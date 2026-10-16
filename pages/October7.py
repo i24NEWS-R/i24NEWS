@@ -1,12 +1,13 @@
 from datetime import datetime
 import os
 import pandas as pd
+import requests
 import streamlit as st
 import yt_dlp
 
 # הגדרת עמוד ב-Streamlit
 st.set_page_config(
-    page_title="October 7 - The last day of my life",
+    page_title="דשבורד צפיות ומעורבות - October 7",
     page_icon="📊",
     layout="wide",
 )
@@ -27,15 +28,19 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.title("October 7 - The last day of my life")
+st.title("📊 דשבורד מעקב צפיות ומעורבות - אירועי 7 באוקטובר")
 st.write(
-    "דשבורד זה טוען נתונים מקובץ `October7.csv` הנמצא באותה התיקייה. הנתונים"
-    " מתעדכנים אך ורק בלחיצה על כפתור הרענון."
+    "הדשבורד שולף נתונים מאינסטגרם דרך RapidAPI (באמצעות Post by URL) ומיתרת"
+    " הפלטפורמות באמצעות yt-dlp."
 )
 
-# הגדרת נתיב דינמי כך שקובץ ה-CSV יישמר בדיוק באותה התיקייה של קובץ הפייתון הנוכחי (pages/)
+# הגדרת נתיב לקובץ ה-CSV באותה התיקייה
 script_dir = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.join(script_dir, "October7.csv")
+
+# הגדרות RapidAPI לאינסטגרם
+RAPIDAPI_KEY = "5d0d7959b6msh8639260ea10e377p1749c4jsnb024816c6283"
+RAPIDAPI_HOST = "instagram-statistics-api.p.rapidapi.com"
 
 # רשימת הקישורים המלאה
 URLS = [
@@ -107,46 +112,87 @@ URLS = [
 ]
 
 
+def fetch_instagram_data(url):
+  """שליפת נתונים מפוסט אינסטגרם דרך ה-Endpoint החדש"""
+  endpoint = f"https://{RAPIDAPI_HOST}/post_by_url"
+  querystring = {"url": url}
+  headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": RAPIDAPI_HOST}
+
+  try:
+    response = requests.get(
+        endpoint, headers=headers, params=querystring, timeout=15
+    )
+    if response.status_code == 200:
+      res = response.json()
+      # חילוץ נתונים מתוך מבנה התשובה של ה-API
+      return {
+          "פלטפורמה": "Instagram",
+          "קישור": url,
+          "צפיות": res.get("view_count", 0)
+          or res.get("video_view_count", 0)
+          or 0,
+          "לייקים": res.get("likes", 0) or res.get("likes_count", 0) or 0,
+          "תגובות": res.get("comments", 0) or res.get("comments_count", 0) or 0,
+          "שיתופים": res.get("shares", 0) or res.get("shares_count", 0) or 0,
+      }
+  except Exception:
+    pass
+
+  return {
+      "פלטפורמה": "Instagram (Error)",
+      "קישור": url,
+      "צפיות": 0,
+      "לייקים": 0,
+      "תגובות": 0,
+      "שיתופים": 0,
+  }
+
+
 def fetch_social_data():
   data = []
   ydl_opts = {"quiet": True, "skip_download": True}
+
   with yt_dlp.YoutubeDL(ydl_opts) as ydl:
     for url in URLS:
-      try:
-        info = ydl.extract_info(url, download=False)
-        platform = info.get("extractor_key", "Unknown")
-        views = info.get("view_count", 0) or 0
-        likes = info.get("like_count", 0) or 0
-        comments = info.get("comment_count", 0) or 0
-        shares = (
-            info.get("repost_count", 0)
-            or info.get("share_count", 0)
-            or 0
-        )
-        data.append({
-            "פלטפורמה": platform,
-            "קישור": url,
-            "צפיות": views,
-            "לייקים": likes,
-            "תגובות": comments,
-            "שיתופים": shares,
-        })
-      except Exception:
-        data.append({
-            "פלטפורמה": "שגיאה",
-            "קישור": url,
-            "צפיות": 0,
-            "לייקים": 0,
-            "תגובות": 0,
-            "שיתופים": 0,
-        })
+      if "instagram.com" in url:
+        ig_data = fetch_instagram_data(url)
+        data.append(ig_data)
+      else:
+        try:
+          info = ydl.extract_info(url, download=False)
+          platform = info.get("extractor_key", "Unknown")
+          views = info.get("view_count", 0) or 0
+          likes = info.get("like_count", 0) or 0
+          comments = info.get("comment_count", 0) or 0
+          shares = (
+              info.get("repost_count", 0)
+              or info.get("share_count", 0)
+              or 0
+          )
+          data.append({
+              "פלטפורמה": platform,
+              "קישור": url,
+              "צפיות": views,
+              "לייקים": likes,
+              "תגובות": comments,
+              "שיתופים": shares,
+          })
+        except Exception:
+          data.append({
+              "פלטפורמה": "שגיאה",
+              "קישור": url,
+              "צפיות": 0,
+              "לייקים": 0,
+              "תגובות": 0,
+              "שיתופים": 0,
+          })
+
   df = pd.DataFrame(data)
-  # שמירת הקובץ אוטומטית בדיוק באותה התיקייה תחת השם October7.csv
   df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
   return df
 
 
-# בדיקה האם קיים קובץ October7.csv באותה התיקייה
+# טעינת נתונים מהמטמון או ביצוע שליפה ראשונית
 if os.path.exists(CACHE_FILE):
   df = pd.read_csv(CACHE_FILE)
 else:
@@ -155,13 +201,13 @@ else:
   ):
     df = fetch_social_data()
 
-# כפתור רענון ידני שמעדכן את הקובץ
+# כפתור רענון ידני
 if st.button("🔄 רענן נתונים מחדש מהרשתות"):
-  with st.spinner("מעדכן נתונים מהרשתות החברתיות..."):
+  with st.spinner("מעדכן נתונים מאינסטגרם ושאר הרשתות..."):
     df = fetch_social_data()
   st.success("הנתונים עודכנו ונשמרו בקובץ October7.csv בהצלחה!")
 
-# הצגת כרטיסי סיכום (Metrics)
+# סיכומים בראש העמוד
 col1, col2, col3, col4 = st.columns(4)
 col1.metric(
     "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
@@ -179,7 +225,6 @@ col4.metric(
 st.markdown("---")
 st.subheader("פירוט לפי סרטון")
 
-# טבלה אינטראקטיבית עם קישורים לחיצים
 st.dataframe(
     df,
     use_container_width=True,
