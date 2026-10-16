@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import re
 import pandas as pd
 import streamlit as st
 import yt_dlp
@@ -11,7 +12,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# עיצוב מקיף מימין לשמאל (RTL) ומראה מקצועי
+# עיצוב מקיף מימין לשמאל (RTL), יישור למרכז ומראה מקצועי
 st.markdown(
     """
     <style>
@@ -21,21 +22,29 @@ st.markdown(
         text-align: right !important;
     }
     
-    /* יישור טקסטים ומדדים */
+    /* יישור טקסטים ומדדים למרכז */
     [data-testid="stMetricValue"], [data-testid="stMetricLabel"], [data-testid="stMetricDelta"] {
         direction: rtl !important;
-        text-align: right !important;
-    }
-
-    /* עיצוב כרטיסים כלליים */
-    .st-emotion-cache-1r6slb0, [data-testid="stVerticalBlock"] {
-        direction: rtl;
+        text-align: center !important;
     }
     
-    /* התאמת קישורים בכותרות */
+    div[data-testid="column"] {
+        text-align: center !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* עיצוב כותרות וקישורים */
+    h1, h2, h3, h4, p {
+        direction: rtl !important;
+        text-align: center !important;
+    }
+    
     a {
         text-decoration: none !important;
-        color: #1f77b4;
+        color: inherit;
     }
     a:hover {
         text-decoration: underline !important;
@@ -51,6 +60,15 @@ st.title("October 7 - The last day of my life")
 # הגדרת נתיב דינמי לקובץ ה-CSV באותה התיקייה
 script_dir = os.path.dirname(os.path.abspath(__file__))
 CACHE_FILE = os.path.join(script_dir, "October7.csv")
+
+# צבעי מותג לפלטפורמות
+PLATFORM_COLORS = {
+    "פייסבוק": "#1877F2",
+    "אינסטגרם": "#E4405F",
+    "טיקטוק": "#010101",
+    "X (טוויטר)": "#333333",
+    "יוטיוב": "#FF0000",
+}
 
 # רשימת הקישורים המלאה
 URLS = [
@@ -122,6 +140,24 @@ URLS = [
 ]
 
 
+def clean_title(title):
+  """ניקוי כותרת הסרטון מהצגת נתונים כמו צפיות ולייקים מתוך המחרוזת"""
+  if not title:
+    return "ללא כותרת"
+  # אם יש תו מפריד כמו |, לוקחים לרוב את החלק הנקי של הכותרת שאחריו
+  if "|" in title:
+    parts = title.split("|")
+    title = parts[-1].strip()
+  # הסרת תבניות נפוצות של צפיות ותגובות בתחילת המחרוזת
+  title = re.sub(
+      r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments).*?(?:\||$)",
+      "",
+      title,
+      flags=re.IGNORECASE,
+  )
+  return title.strip() or "ללא כותרת"
+
+
 def fetch_social_data():
   data = []
   ydl_opts = {"quiet": True, "skip_download": True}
@@ -144,7 +180,8 @@ def fetch_social_data():
         else:
           platform = info.get("extractor_key", "אחר")
 
-        title = info.get("title", "ללא כותרת")
+        raw_title = info.get("title", "ללא כותרת")
+        title = clean_title(raw_title)
         thumbnail = info.get("thumbnail", "")
         views = info.get("view_count", 0) or 0
         likes = info.get("like_count", 0) or 0
@@ -166,146 +203,3 @@ def fetch_social_data():
             "שיתופים": shares,
         })
       except Exception:
-        if "facebook.com" in url:
-          p = "פייסבוק"
-        elif "instagram.com" in url:
-          p = "אינסטגרם"
-        elif "tiktok.com" in url:
-          p = "טיקטוק"
-        elif "x.com" in url or "twitter.com" in url:
-          p = "X (טוויטר)"
-        elif "youtube.com" in url or "youtu.be" in url:
-          p = "יוטיוב"
-        else:
-          p = "שגיאה"
-
-        data.append({
-            "פלטפורמה": p,
-            "כותרת": "שגיאה בשליפת הנתונים",
-            "קישור": url,
-            "תמונה": "",
-            "צפיות": 0,
-            "לייקים": 0,
-            "תגובות": 0,
-            "שיתופים": 0,
-        })
-
-  df = pd.DataFrame(data)
-  df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
-  return df
-
-
-# טעינת נתונים עם הודעת סטטוס ברורה
-required_cols = [
-    "פלטפורמה",
-    "כותרת",
-    "קישור",
-    "תמונה",
-    "צפיות",
-    "לייקים",
-    "תגובות",
-    "שיתופים",
-]
-if os.path.exists(CACHE_FILE):
-  df = pd.read_csv(CACHE_FILE)
-  if not all(col in df.columns for col in required_cols):
-    with st.spinner("🔄 הנתונים נטענים... מעדכן מבנה נתונים"):
-      df = fetch_social_data()
-else:
-  with st.spinner(
-      "🔄 הנתונים נטענים... מבצע שליפה ראשונית ושמירה לקובץ October7.csv"
-  ):
-    df = fetch_social_data()
-
-# כפתור רענון בסיידבר
-with st.sidebar:
-  st.header("⚙️ הגדרות ובקרה")
-  if st.button("🔄 רענן נתונים מחדש מהרשתות"):
-    with st.spinner("🔄 הנתונים נטענים מחדש מהרשתות החברתיות..."):
-      df = fetch_social_data()
-    st.success("הנתונים עודכנו בהצלחה!")
-
-# --- חלק עליון: כרטיס סיכום כללי מרכזי ---
-with st.container(border=True):
-  st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
-  col1, col2, col3, col4 = st.columns(4)
-  col1.metric(
-      "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
-  )
-  col2.metric(
-      "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
-  )
-  col3.metric(
-      "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
-  )
-  col4.metric(
-      "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
-  )
-
-st.markdown("---")
-
-# ניהול מצב טעינה נוספת (Pagination / Load More) ב-Session State
-if "limit_per_platform" not in st.session_state:
-  st.session_state.limit_per_platform = 5
-
-# --- חלק תחתון: כרטיסים נפרדים ומלוטשים לכל פלטפורמה ---
-platforms = ["פייסבוק", "אינסטגרם", "טיקטוק", "X (טוויטר)", "יוטיוב"]
-
-for plat in platforms:
-  plat_df = df[df["פלטפורמה"] == plat]
-
-  if not plat_df.empty:
-    with st.container(border=True):
-      st.markdown(f"## 📌 פלטפורמה: {plat}")
-
-      # מדדים מסכמים לפלטפורמה
-      p1, p2, p3, p4 = st.columns(4)
-      p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
-      p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
-      p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
-      p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
-
-      st.markdown("---")
-
-      # הצגת סרטונים מוגבלים לפי כמות "טעינה נוספת"
-      current_limit = st.session_state.limit_per_platform
-      visible_df = plat_df.head(current_limit)
-
-      for index, row in visible_df.iterrows():
-        # כרטיס נפרד לכל סרטון עם תמונה גדולה וכותרת לחיצה
-        with st.container(border=True):
-          v_col1, v_col2, v_col3, v_col4, v_col5 = st.columns(
-              [1.5, 4, 1, 1, 1]
-          )
-
-          with v_col1:
-            if pd.notna(row["תמונה"]) and str(row["תמונה"]).startswith(
-                "http"
-            ):
-              st.image(row["תמונה"], width=140)
-            else:
-              st.info("אין תמונה")
-
-          with v_col2:
-            # הכותרת כוללת את הקישור הישיר
-            title_text = row["כותרת"]
-            link_url = row["קישור"]
-            st.markdown(f"#### [{title_text}]({link_url})")
-            st.caption(f"פלטפורמה: {row['פלטפורמה']}")
-
-          with v_col3:
-            st.metric("צפיות", f"{int(row['צפיות']):,}")
-
-          with v_col4:
-            st.metric("לייקים", f"{int(row['לייקים']):,}")
-
-          with v_col5:
-            st.metric("תגובות", f"{int(row['תגובות']):,}")
-
-      # כפתור טעינה נוספת לפלטפורמה זו אם יש עוד פריטים להציג
-      if len(plat_df) > current_limit:
-        if st.button(f"📥 טעינה נוספת ({plat})", key=f"load_more_{plat}"):
-          st.session_state.limit_per_platform += 5
-          st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
