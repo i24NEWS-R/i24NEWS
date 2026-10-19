@@ -2,7 +2,7 @@ import os, re, requests, pandas as pd, streamlit as st, yt_dlp
 
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
 
-# עיצוב CSS מתקדם לדשבורד יוקרתי וממורכז
+# עיצוב CSS מתקדם לדשבורד יוקרתי, ממורכז לחלוטין, כרטיסים מעוגלים עם קו מקווקו
 st.markdown("""
     <style>
     .main-title {
@@ -250,23 +250,8 @@ with col4:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# בניית טבלה בעיצוב מותאם אישית (רוחבים מותאמים, בלי עמודת קישור נפרדת, שם הסרטון הוא הקישור)
-table_html = """
-<table class="custom-table">
-    <thead>
-        <tr>
-            <th style="width: 10%;">פלטפורמה</th>
-            <th style="width: 14%;">שם משתמש</th>
-            <th style="width: 7%;">תמונה</th>
-            <th style="width: 48%;">שם סרטון</th>
-            <th style="width: 5%;">צפיות</th>
-            <th style="width: 5%;">לייקים</th>
-            <th style="width: 5%;">תגובות</th>
-            <th style="width: 6%;">שיתופים</th>
-        </tr>
-    </thead>
-    <tbody>
-"""
+# בניית טבלה שטוחה לחלוטין (ללא רווחים מיותרים שגורמים ל-Markdown לפרש אותה כקוד)
+table_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
 
 for _, row in df.iterrows():
     plat = row['פלטפורמה']
@@ -280,18 +265,8 @@ for _, row in df.iterrows():
     comments = f"{int(row['תגובות']):,}"
     shares = f"{int(row['שיתופים']):,}"
 
-    table_html += f"""
-        <tr>
-            <td>{plat}</td>
-            <td>{user}</td>
-            <td>{thumb_tag}</td>
-            <td><a href="{link}" target="_blank" class="video-link">{title}</a></td>
-            <td>{views}</td>
-            <td>{likes}</td>
-            <td>{comments}</td>
-            <td>{shares}</td>
-        </tr>
-    """
-table_html += "</tbody></table>"
+    table_html += f'<tr><td>{plat}</td><td>{user}</td><td>{thumb_tag}</td><td><a href="{link}" target="_blank" class="video-link">{title}</a></td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>'
+
+table_html += '</tbody></table>'
 
 st.markdown(table_html, unsafe_allow_html=True)
