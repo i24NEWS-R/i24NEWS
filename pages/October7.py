@@ -16,7 +16,7 @@ URLS = [
     "https://www.facebook.com/reel/1834808051214925", "https://www.facebook.com/reel/2003722767682462",
     "https://www.facebook.com/reel/2004915936880315", "https://www.facebook.com/reel/28594037286923487",
     "https://www.facebook.com/reel/3189661697897533", "https://www.facebook.com/reel/996450340148747",
-    # Instagram
+    # Instagram (שמורים ברשימה, יטופלו בהמשך)
     "https://www.instagram.com/p/Deb5bDXD6Gs/", "https://www.instagram.com/p/Deb5UJfFKU1/",
     "https://www.instagram.com/p/Deb8nh5Du4y/", "https://www.instagram.com/p/DeeYjQ2DnYf/",
     "https://www.instagram.com/p/DeeYTozDXdP/", "https://www.instagram.com/p/DeeYzU5lXQ_/",
@@ -46,68 +46,71 @@ URLS = [
     "https://youtube.com/shorts/s7dlo-EO6ps", "https://youtube.com/shorts/XSEI6HgRjzQ"
 ]
 
-def fetch_social_data():
-    data = []
+def fetch_facebook_data():
+    """שליפת נתוני פייסבוק דרך ה-Meta API כולל שם העמוד והתמונה הממוזערת"""
+    fb_data = []
+    for url in URLS:
+        if "facebook.com" in url or "fb.watch" in url:
+            match = re.search(r'/(?:reel|videos|posts)/(\d+)', url)
+            fb_id = match.group(1) if match else None
+            
+            if fb_id:
+                api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,from{{name}},picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
+                try:
+                    res = requests.get(api_url).json()
+                    if "error" not in res:
+                        desc = res.get("description") or "ללא כותרת"
+                        views = res.get("views", 0) or 0
+                        username = res.get("from", {}).get("name", "i24NEWS")
+                        picture = res.get("picture", "")
+                        
+                        likes = 0
+                        comments = 0
+                        shares = 0
+                        
+                        for insight in res.get("video_insights", {}).get("data", []):
+                            m_name = insight.get("name")
+                            values = insight.get("values", [{}])[0].get("value", {})
+                            if m_name == "post_video_likes_by_reaction_type":
+                                likes = sum(values.values())
+                            elif m_name == "post_video_social_actions":
+                                comments = values.get("COMMENT", 0)
+                                shares = values.get("SHARE", 0)
+                        
+                        fb_data.append({
+                            "פלטפורמה": "פייסבוק",
+                            "שם משתמש": username,
+                            "תמונה": picture,
+                            "שם סרטון": desc,
+                            "קישור": url,
+                            "צפיות": views,
+                            "לייקים": likes,
+                            "תגובות": comments,
+                            "שיתופים": shares
+                        })
+                        continue
+                except Exception:
+                    pass
+            
+            fb_data.append({
+                "פלטפורמה": "פייסבוק", "שם משתמש": "i24NEWS", "תמונה": "", 
+                "שם סרטון": "שגיאה בשליפת API", "קישור": url, 
+                "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+            })
+    return fb_data
+
+def fetch_ytdlp_data():
+    """שליפת שאר הרשתות דרך yt_dlp (וקישור אינסטגרם כממתין)"""
+    other_data = []
     with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
         for url in URLS:
-            if "facebook.com" in url or "fb.watch" in url:
-                plat = "פייסבוק"
-                match = re.search(r'/(?:reel|videos|posts)/(\d+)', url)
-                fb_id = match.group(1) if match else None
-                
-                success = False
-                if fb_id:
-                    api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
-                    try:
-                        res = requests.get(api_url).json()
-                        if "error" not in res:
-                            desc = res.get("description") or "ללא כותרת"
-                            views = res.get("views", 0) or 0
-                            
-                            likes_count = 0
-                            comments_count = 0
-                            shares_count = 0
-                            
-                            for insight in res.get("video_insights", {}).get("data", []):
-                                metric_name = insight.get("name")
-                                values = insight.get("values", [{}])[0].get("value", {})
-                                if metric_name == "post_video_likes_by_reaction_type":
-                                    likes_count = sum(values.values())
-                                elif metric_name == "post_video_social_actions":
-                                    comments_count = values.get("COMMENT", 0)
-                                    shares_count = values.get("SHARE", 0)
-                            
-                            data.append({
-                                "פלטפורמה": plat,
-                                "שם משתמש": "i24NEWS",
-                                "תמונה": "",
-                                "שם סרטון": desc,
-                                "קישור": url,
-                                "צפיות": views,
-                                "לייקים": likes_count,
-                                "תגובות": comments_count,
-                                "שיתופים": shares_count
-                            })
-                            success = True
-                    except Exception:
-                        pass
-                
-                if not success:
-                    data.append({
-                        "פלטפורמה": plat, "שם משתמש": "i24NEWS", "תמונה": "", 
-                        "שם סרטון": "שגיאה בשליפת API", "קישור": url, 
-                        "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
-                    })
-
-            elif "instagram.com" in url:
-                plat = "אינסטגרם"
-                data.append({
-                    "פלטפורמה": plat, "שם משתמש": "i24NEWS", "תמונה": "", 
-                    "שם סרטון": "אינסטגרם API", "קישור": url, 
+            if "instagram.com" in url:
+                other_data.append({
+                    "פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", 
+                    "שם סרטון": "ממתין לאינסטגרם API", "קישור": url, 
                     "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
                 })
-
-            else:
+            elif not ("facebook.com" in url or "fb.watch" in url):
                 if "tiktok.com" in url:
                     plat = "טיקטוק"
                 elif "x.com" in url or "twitter.com" in url:
@@ -119,9 +122,9 @@ def fetch_social_data():
 
                 try:
                     info = ydl.extract_info(url, download=False)
-                    uploader = info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע"
+                    uploader = info.get("uploader") or info.get("channel") or "לא ידוע"
                     shares = info.get("repost_count", 0) or info.get("share_count", 0) or 0
-                    data.append({
+                    other_data.append({
                         "פלטפורמה": plat,
                         "שם משתמש": uploader,
                         "תמונה": info.get("thumbnail", ""),
@@ -133,13 +136,16 @@ def fetch_social_data():
                         "שיתופים": shares
                     })
                 except:
-                    data.append({
+                    other_data.append({
                         "פלטפורמה": plat, "שם משתמש": "שגיאה בשליפה", "תמונה": "", 
                         "שם סרטון": "שגיאה בשליפה", "קישור": url, 
                         "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
                     })
+    return other_data
 
-    df = pd.DataFrame(data)
+def fetch_all_social_data():
+    """איחוד כל נתוני הפלטפורמות לטבלה אחת"""
+    df = pd.DataFrame(fetch_facebook_data() + fetch_ytdlp_data())
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
 
@@ -147,15 +153,15 @@ if os.path.exists(CACHE_FILE):
     df = pd.read_csv(CACHE_FILE)
     if "שיתופים" not in df.columns or "שם משתמש" not in df.columns:
         with st.spinner("מעדכן מבנה נתונים..."):
-            df = fetch_social_data()
+            df = fetch_all_social_data()
 else:
     with st.spinner("טוען נתונים..."):
-        df = fetch_social_data()
+        df = fetch_all_social_data()
 
 with st.sidebar:
     if st.button("🔄 רענן נתונים"):
         with st.spinner("מרענן מול ה-API והרשתות..."):
-            df = fetch_social_data()
+            df = fetch_all_social_data()
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
