@@ -272,4 +272,26 @@ for _, row in df.iterrows():
     plat = row['פלטפורמה']
     user = row['שם משתמש']
     thumb = row['תמונה']
-    thumb_tag = f'<img src="{thumb}" style="width: 36px;
+    thumb_tag = f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;" />' if pd.notna(thumb) and str(thumb).startswith('http') else ''
+    title = row['שם סרטון']
+    link = row['קישור']
+    views = f"{int(row['צפיות']):,}"
+    likes = f"{int(row['לייקים']):,}"
+    comments = f"{int(row['תגובות']):,}"
+    shares = f"{int(row['שיתופים']):,}"
+
+    table_html += f"""
+        <tr>
+            <td>{plat}</td>
+            <td>{user}</td>
+            <td>{thumb_tag}</td>
+            <td><a href="{link}" target="_blank" class="video-link">{title}</a></td>
+            <td>{views}</td>
+            <td>{likes}</td>
+            <td>{comments}</td>
+            <td>{shares}</td>
+        </tr>
+    """
+table_html += "</tbody></table>"
+
+st.markdown(table_html, unsafe_allow_html=True)
