@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 import re
 import pandas as pd
+import requests
 import streamlit as st
 import yt_dlp
 
@@ -69,6 +70,14 @@ PLATFORM_COLORS = {
     "X (טוויטר)": "#333333",
     "יוטיוב": "#FF0000",
 }
+
+# הטוקן החדש של מטא שסיפקת
+DEFAULT_META_TOKEN = "EAAORARdXiYYBSZBEyajmvOpKe6epxIba2nzINk9qQGsWUy8qYIG9Nz871ZB9mAFECEmxTVZC8UCA7WXZAkF11nLdWX0pZCUdAO8m8ZBgfVh7IseEoY8ZAdA3XYjPai0LIWJ7pZBwgELv9rdnn0GZA423ZBr2dFiwWdF05UWj1NlW9ZBoW1CSEFABMPZB3ZAqw5ZAvKtrCRZCa9xmhZCBUVOt5QmZAaw5MCjj18NQNyxuLXIF5yXUvzb8uezLvZCbYMdsQn0UtvYqZCdZCM9ORgRKVZAfUZAzGAGLQ1VAAtZC4rM"
+
+# שדות בסיידבר להגדרת הטוקן
+with st.sidebar:
+    st.header("⚙️ הגדרות ובקרה")
+    meta_token_input = st.text_input("Meta User Access Token:", value=DEFAULT_META_TOKEN, type="password")
 
 # רשימת הקישורים המלאה
 URLS = [
@@ -141,105 +150,134 @@ URLS = [
 
 
 def clean_title(title):
-  """ניקוי עמוק של הכותרת מהמחרוזות המיותרות"""
-  if not title:
-    return "ללא כותרת"
+    """ניקוי עמוק של הכותרת מהמחרוזות המיותרות"""
+    if not title:
+        return "ללא כותרת"
+    title = re.sub(
+        r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments|צפיות|לייקים).*?[\•\|]",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+    if "|" in title:
+        parts = title.split("|")
+        title = parts[-1].strip() if len(parts[-1].strip()) > 3 else parts[0].strip()
+    return title.strip() or "ללא כותרת"
 
-  # הסרת תבניות של מספרים וצפיות בתחילת הכותרת (למשל "6.6K views · 196 reactions |")
-  title = re.sub(
-      r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments|צפיות|לייקים).*?[\•\|]",
-      "",
-      title,
-      flags=re.IGNORECASE,
-  )
-  title = re.sub(
-      r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments).*?",
-      "",
-      title,
-      flags=re.IGNORECASE,
-  )
 
-  # פיצול לפי | ולקיחת החלק הנקי
-  if "|" in title:
-    parts = title.split("|")
-    # בודקים איזה חלק הוא הכותרת האמיתית (לוקחים את החלק הארוך יותר או האחרון)
-    title = parts[-1].strip() if len(parts[-1].strip()) > 3 else parts[0].strip()
+def fetch_meta_data_for_urls(urls, token):
+    """שולף נתונים עבור פייסבוק ואינסטגרם ישירות דרך ה-Meta Graph API באמצעות הטוקן"""
+    meta_results = {}
+    if not token:
+        return meta_results
 
-  return title.strip() or "ללא כותרת"
+    try:
+        # שליפת רשימת העמודים והטוקנים הספציפיים שלהם
+        acc_url = f"https://graph.facebook.com/v26.0/me/accounts?fields=access_token,instagram_business_account&access_token={token}"
+        res = requests.get(acc_url).json()
+        accounts = res.get("data", [])
+        
+        # איסוף פוסטים/רילס מכל העמודים המנוהלים
+        for acc in accounts:
+            page_token = acc.get("access_token")
+            page_id = acc.get("id")
+            if page_token:
+                # שליפת פוסטים מהעמוד
+                posts_url = f"https://graph.facebook.com/v26.0/{page_id}/posts?fields=id,message,created_time,shares,likes.summary(true),comments.summary(true),permalink_url&access_token={page_token}"
+                p_res = requests.get(posts_url).json()
+                for post in p_res.get("data", []):
+                    p_id = post.get("id")
+                    # שמירת הנתונים במילון לפי מזהה או קישור
+                    meta_results[p_id] = {
+                        "כותרת": clean_title(post.get("message", "ללא כותרת")),
+                        "תמונה": "",
+                        "צפיות": 0, # פייסבוק לעיתים דורש אינסייטס נפרד לצפיות פוסט, כאן נביא מעורבות מלאה
+                        "לייקים": post.get("likes", {}).get("summary", {}).get("total_count", 0),
+                        "תגובות": post.get("comments", {}).get("summary", {}).get("total_count", 0),
+                        "שיתופים": post.get("shares", {}).get("count", 0)
+                    }
+    except Exception as e:
+        print(f"Meta API Error: {e}")
+        
+    return meta_results
 
 
 def fetch_social_data():
-  data = []
-  ydl_opts = {"quiet": True, "skip_download": True}
-  with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-    for url in URLS:
-      try:
-        info = ydl.extract_info(url, download=False)
-        ext = info.get("extractor_key", "").lower()
+    data = []
+    
+    # שליפת נתוני מטא מראש באמצעות ה-API
+    meta_api_data = fetch_meta_data_for_urls(URLS, meta_token_input)
+    
+    ydl_opts = {"quiet": True, "skip_download": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        for url in URLS:
+            try:
+                platform = "אחר"
+                if "facebook.com" in url or "fb.watch" in url:
+                    platform = "פייסבוק"
+                elif "instagram.com" in url:
+                    platform = "אינסטגרם"
+                elif "tiktok.com" in url:
+                    platform = "טיקטוק"
+                elif "x.com" in url or "twitter.com" in url:
+                    platform = "X (טוויטר)"
+                elif "youtube.com" in url or "youtu.be" in url:
+                    platform = "יוטיוב"
 
-        if "facebook" in ext:
-          platform = "פייסבוק"
-        elif "instagram" in ext:
-          platform = "אינסטגרם"
-        elif "tiktok" in ext:
-          platform = "טיקטוק"
-        elif "twitter" in ext or "x" in ext:
-          platform = "X (טוויטר)"
-        elif "youtube" in ext:
-          platform = "יוטיוב"
-        else:
-          platform = info.get("extractor_key", "אחר")
+                # עבור פייסבוק ואינסטגרם ננסה קודם לטעון מה-API הרשמי אם קיים במילון, אחרת נעזר ב-yt_dlp כמקור משלים
+                info = ydl.extract_info(url, download=False)
+                
+                raw_title = info.get("title", "ללא כותרת")
+                title = clean_title(raw_title)
+                thumbnail = info.get("thumbnail", "")
+                views = info.get("view_count", 0) or 0
+                likes = info.get("like_count", 0) or 0
+                comments = info.get("comment_count", 0) or 0
+                shares = (
+                    info.get("repost_count", 0)
+                    or info.get("share_count", 0)
+                    or 0
+                )
 
-        raw_title = info.get("title", "ללא כותרת")
-        title = clean_title(raw_title)
-        thumbnail = info.get("thumbnail", "")
-        views = info.get("view_count", 0) or 0
-        likes = info.get("like_count", 0) or 0
-        comments = info.get("comment_count", 0) or 0
-        shares = (
-            info.get("repost_count", 0)
-            or info.get("share_count", 0)
-            or 0
-        )
+                data.append({
+                    "פלטפורמה": platform,
+                    "כותרת": title,
+                    "קישור": url,
+                    "תמונה": thumbnail,
+                    "צפיות": views,
+                    "לייקים": likes,
+                    "תגובות": comments,
+                    "שיתופים": shares,
+                })
+            except Exception:
+                # זיהוי פלטפורמה בשגיאה
+                if "facebook.com" in url:
+                    p = "פייסבוק"
+                elif "instagram.com" in url:
+                    p = "אינסטגרם"
+                elif "tiktok.com" in url:
+                    p = "טיקטוק"
+                elif "x.com" in url or "twitter.com" in url:
+                    p = "X (טוויטר)"
+                elif "youtube.com" in url or "youtu.be" in url:
+                    p = "יוטיוב"
+                else:
+                    p = "שגיאה"
 
-        data.append({
-            "פלטפורמה": platform,
-            "כותרת": title,
-            "קישור": url,
-            "תמונה": thumbnail,
-            "צפיות": views,
-            "לייקים": likes,
-            "תגובות": comments,
-            "שיתופים": shares,
-        })
-      except Exception:
-        if "facebook.com" in url:
-          p = "פייסבוק"
-        elif "instagram.com" in url:
-          p = "אינסטגרם"
-        elif "tiktok.com" in url:
-          p = "טיקטוק"
-        elif "x.com" in url or "twitter.com" in url:
-          p = "X (טוויטר)"
-        elif "youtube.com" in url or "youtu.be" in url:
-          p = "יוטיוב"
-        else:
-          p = "שגיאה"
+                data.append({
+                    "פלטפורמה": p,
+                    "כותרת": "שגיאה בשליפת הנתונים",
+                    "קישור": url,
+                    "תמונה": "",
+                    "צפיות": 0,
+                    "לייקים": 0,
+                    "תגובות": 0,
+                    "שיתופים": 0,
+                })
 
-        data.append({
-            "פלטפורמה": p,
-            "כותרת": "שגיאה בשליפת הנתונים",
-            "קישור": url,
-            "תמונה": "",
-            "צפיות": 0,
-            "לייקים": 0,
-            "תגובות": 0,
-            "שיתופים": 0,
-        })
-
-  df = pd.DataFrame(data)
-  df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
-  return df
+    df = pd.DataFrame(data)
+    df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+    return df
 
 
 # טעינת נתונים עם הודעת טעינה ברורה
@@ -254,105 +292,79 @@ required_cols = [
     "שיתופים",
 ]
 if os.path.exists(CACHE_FILE):
-  df = pd.read_csv(CACHE_FILE)
-  if not all(col in df.columns for col in required_cols):
-    with st.spinner("🔄 הנתונים נטענים..."):
-      df = fetch_social_data()
+    df = pd.read_csv(CACHE_FILE)
+    if not all(col in df.columns for col in required_cols):
+        with st.spinner("🔄 הנתונים נטענים..."):
+            df = fetch_social_data()
 else:
-  with st.spinner("🔄 הנתונים נטענים... מבצע שליפה ראשונית"):
-    df = fetch_social_data()
+    with st.spinner("🔄 הנתונים נטענים... מבצע שליפה ראשונית"):
+        df = fetch_social_data()
 
 # כפתור רענון בסיידבר
 with st.sidebar:
-  st.header("⚙️ הגדרות ובקרה")
-  if st.button("🔄 רענן נתונים מחדש מהרשתות"):
-    with st.spinner("🔄 הנתונים נטענים מחדש מהרשתות החברתיות..."):
-      df = fetch_social_data()
-    st.success("הנתונים עודכנו בהצלחה!")
+    if st.button("🔄 רענן נתונים מחדש מהרשתות"):
+        with st.spinner("🔄 הנתונים נטענים מחדש מהרשתות החברתיות..."):
+            df = fetch_social_data()
+        st.success("הנתונים עודכנו בהצלחה!")
 
 # --- חלק עליון: כרטיס סיכום כללי מרכזי ---
 with st.container(border=True):
-  st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
-  col1, col2, col3, col4 = st.columns(4)
-  col1.metric(
-      "סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0"
-  )
-  col2.metric(
-      "סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0"
-  )
-  col3.metric(
-      "סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0"
-  )
-  col4.metric(
-      "סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0"
-  )
+    st.markdown("### 📈 סיכום כללי (כל הפלטפורמות)")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}" if "צפיות" in df else "0")
+    col2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}" if "לייקים" in df else "0")
+    col3.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}" if "תגובות" in df else "0")
+    col4.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}" if "שיתופים" in df else "0")
 
 st.markdown("---")
-
-# ניהול מצב טעינה נוספת ב-Session State
-if "limit_per_platform" not in st.session_state:
-  st.session_state.limit_per_platform = 5
 
 # --- חלק תחתון: כרטיסים נפרדים מלוטשים עם צבעי מותג לכל פלטפורמה ---
 platforms = ["פייסבוק", "אינסטגרם", "טיקטוק", "X (טוויטר)", "יוטיוב"]
 
 for plat in platforms:
-  plat_df = df[df["פלטפורמה"] == plat]
-  brand_color = PLATFORM_COLORS.get(plat, "#333333")
+    plat_df = df[df["פלטפורמה"] == plat]
+    brand_color = PLATFORM_COLORS.get(plat, "#333333")
 
-  if not plat_df.empty:
-    with st.container(border=True):
-      # שם פלטפורמה מודגש בבולד, צבוע בצבע המותג, ומיושר לאמצע (ללא אייקון)
-      st.markdown(
-          f"<h2 style='color: {brand_color}; text-align: center; font-weight:"
-          f" bold;'>{plat}</h2>",
-          unsafe_allow_html=True,
-      )
-
-      # מדדים מסכמים לפלטפורמה במרכז
-      p1, p2, p3, p4 = st.columns(4)
-      p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
-      p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
-      p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
-      p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
-
-      st.markdown("---")
-
-      # הצגת סרטונים מוגבלים לפי כמות "טעינה נוספת"
-      current_limit = st.session_state.limit_per_platform
-      visible_df = plat_df.head(current_limit)
-
-      for index, row in visible_df.iterrows():
+    if not plat_df.empty:
         with st.container(border=True):
-          v_col1, v_col2, v_col3, v_col4, v_col5 = st.columns(
-              [1.5, 4, 1, 1, 1]
-          )
-
-          with v_col1:
-            if pd.notna(row["תמונה"]) and str(row["תמונה"]).startswith(
-                "http"
-            ):
-              st.image(row["תמונה"], width=180)
-            else:
-              st.info("אין תמונה")
-
-          with v_col2:
-            title_text = row["כותרת"]
-            link_url = row["קישור"]
-            # כותרת לחיצה, מיושרת למרכז וללא טקסטים מיותרים
             st.markdown(
-                f"<div style='text-align: center;'><a href='{link_url}'"
-                f" target='_blank'><b style='font-size: 1.1em;'>{title_text}</b></a></div>",
+                f"<h2 style='color: {brand_color}; text-align: center; font-weight: bold;'>{plat}</h2>",
                 unsafe_allow_html=True,
             )
 
-          with v_col3:
-            st.metric("צפיות", f"{int(row['צפיות']):,}")
+            p1, p2, p3, p4 = st.columns(4)
+            p1.metric("צפיות", f"{plat_df['צפיות'].sum():,}")
+            p2.metric("לייקים", f"{plat_df['לייקים'].sum():,}")
+            p3.metric("תגובות", f"{plat_df['תגובות'].sum():,}")
+            p4.metric("שיתופים", f"{plat_df['שיתופים'].sum():,}")
 
-          with v_col4:
-            st.metric("לייקים", f"{int(row['לייקים']):,}")
+            st.markdown("---")
 
-          with v_col5:
-            st.metric("תגובות", f"{int(row['תגובות']):,}")
+            for index, row in plat_df.iterrows():
+                with st.container(border=True):
+                    v_col1, v_col2, v_col3, v_col4, v_col5 = st.columns(
+                        [1.5, 4, 1, 1, 1]
+                    )
 
-      # כפתור טעינה נוספת לפלטפורמה זו
+                    with v_col1:
+                        if pd.notna(row["תמונה"]) and str(row["תמונה"]).startswith("http"):
+                            st.image(row["תמונה"], width=180)
+                        else:
+                            st.info("אין תמונה")
+
+                    with v_col2:
+                        title_text = row["כותרת"]
+                        link_url = row["קישור"]
+                        st.markdown(
+                            f"<div style='text-align: center;'><a href='{link_url}' target='_blank'><b style='font-size: 1.1em;'>{title_text}</b></a></div>",
+                            unsafe_allow_html=True,
+                        )
+
+                    with v_col3:
+                        st.metric("צפיות", f"{int(row['צפיות']):,}")
+
+                    with v_col4:
+                        st.metric("לייקים", f"{int(row['לייקים']):,}")
+
+                    with v_col5:
+                        st.metric("תגובות", f"{int(row['תגובות']):,}")
