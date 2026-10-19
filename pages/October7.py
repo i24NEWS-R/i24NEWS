@@ -6,7 +6,7 @@ st.markdown("<style>html, body { direction: rtl; text-align: right; }</style>", 
 st.title("October 7 - The last day of my life")
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "October7.csv")
-META_USER_TOKEN = "EAAORARdXiYYBSZBEyajmvOpKe6epxIba2nzINk9qQGsWUy8qYIG9Nz871ZB9mAFECEmxTVZC8UCA7WXZAkF11nLdWX0pZCUdAO8m8ZBgfVh7IseEoY8ZAdA3XYjPai0LIWJ7pZBwgELv9rdnn0GZA423ZBr2dFiwWdF05UWj1NlW9ZBoW1CSEFABMPZB3ZAqw5ZAvKtrCRZCa9xmhZCBUVOt5QmZAaw5MCjj18NQNyxuLXIF5yXUvzb8uezLvZCbYMdsQn0UtvYqZCdZCM9ORgRKVZAfUZAzGAGLQ1VAAtZC4rM"
+META_USER_TOKEN = "EAAORARdXiYYBS9qNAtINW7KnKzvAOObamroZA1ZBqsS9U4OsiPv5iKNtK6rulafegvF4Xy8lZA3ZA0W3McOPrjLi0zDQypwUVgnSinhHvtwjOE8COktwJWVlZAhnknlb8z4zzLHU4CNkNU1SlX6ZCAqrw5wTO0R6ZAuxolZBeQxFRdAnlZAqSkQOCYA3tZCjERQk3XQiaCvh4ehdq5WeoLFTfwolyISwUhaelXcwO6tKyJxZCJlSU0LS2wAPAAUuZCpzerXdMgC0eVvk9PNyjnhndFJgEtcbg9O2"
 
 URLS = [
     # Facebook Reels
@@ -46,29 +46,8 @@ URLS = [
     "https://youtube.com/shorts/s7dlo-EO6ps", "https://youtube.com/shorts/XSEI6HgRjzQ"
 ]
 
-def get_meta_pages():
-    """שולף את העמודים והטוקנים המנוהלים"""
-    pages = []
-    try:
-        url = f"https://graph.facebook.com/v26.0/me/accounts?fields=id,name,access_token&access_token={META_USER_TOKEN}"
-        res = requests.get(url).json()
-        for acc in res.get("data", []):
-            pages.append({
-                "id": acc.get("id"),
-                "token": acc.get("access_token"),
-                "name": acc.get("name", "i24NEWS")
-            })
-    except Exception:
-        pass
-    return pages
-
 def fetch_social_data():
     data = []
-    meta_pages = get_meta_pages()
-    # נשתמש בטוקן של העמוד הראשון כברירת מחדל לשליפות ישירות
-    default_token = meta_pages[0]["token"] if meta_pages else META_USER_TOKEN
-    default_name = meta_pages[0]["name"] if meta_pages else "i24NEWS"
-
     with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
         for url in URLS:
             if "facebook.com" in url or "fb.watch" in url:
@@ -76,8 +55,9 @@ def fetch_social_data():
                 match = re.search(r'/(?:reel|videos|posts)/(\d+)', url)
                 fb_id = match.group(1) if match else None
                 
+                success = False
                 if fb_id:
-                    api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={default_token}"
+                    api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
                     try:
                         res = requests.get(api_url).json()
                         if "error" not in res:
@@ -92,14 +72,14 @@ def fetch_social_data():
                                 metric_name = insight.get("name")
                                 values = insight.get("values", [{}])[0].get("value", {})
                                 if metric_name == "post_video_likes_by_reaction_type":
-                                    likes_count = sum(values.values()) # סכום כל הריאקציות
+                                    likes_count = sum(values.values())
                                 elif metric_name == "post_video_social_actions":
                                     comments_count = values.get("COMMENT", 0)
                                     shares_count = values.get("SHARE", 0)
                             
                             data.append({
                                 "פלטפורמה": plat,
-                                "שם משתמש": default_name,
+                                "שם משתמש": "i24NEWS",
                                 "תמונה": "",
                                 "שם סרטון": desc,
                                 "קישור": url,
@@ -108,28 +88,26 @@ def fetch_social_data():
                                 "תגובות": comments_count,
                                 "שיתופים": shares_count
                             })
-                            continue
+                            success = True
                     except Exception:
                         pass
                 
-                # במקרה ששליפת ה-API נכשלה
-                data.append({
-                    "פלטפורמה": plat, "שם משתמש": default_name, "תמונה": "", 
-                    "שם סרטון": "שגיאה בשליפת API", "קישור": url, 
-                    "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
-                })
+                if not success:
+                    data.append({
+                        "פלטפורמה": plat, "שם משתמש": "i24NEWS", "תמונה": "", 
+                        "שם סרטון": "שגיאה בשליפת API", "קישור": url, 
+                        "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                    })
 
             elif "instagram.com" in url:
                 plat = "אינסטגרם"
-                # אינסטגרם יטופל בהמשך באותו עיקרון או דרך ה-API העסקי
                 data.append({
-                    "פלטפורמה": plat, "שם משתמש": default_name, "תמונה": "", 
+                    "פלטפורמה": plat, "שם משתמש": "i24NEWS", "תמונה": "", 
                     "שם סרטון": "אינסטגרם API", "קישור": url, 
                     "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
                 })
 
             else:
-                # טיקטוק, X, יוטיוב דרך yt_dlp
                 if "tiktok.com" in url:
                     plat = "טיקטוק"
                 elif "x.com" in url or "twitter.com" in url:
@@ -179,7 +157,6 @@ with st.sidebar:
         with st.spinner("מרענן מול ה-API והרשתות..."):
             df = fetch_social_data()
 
-# כרטיסי סיכום עליונים
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
 c2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
@@ -188,7 +165,6 @@ c4.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
 
 st.markdown("---")
 
-# תצוגת הטבלה
 st.dataframe(
     df[["פלטפורמה", "שם משתמש", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות", "שיתופים"]],
     column_config={
