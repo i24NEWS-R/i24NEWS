@@ -53,6 +53,7 @@ def fetch_social_data():
             try:
                 info = ydl.extract_info(url, download=False)
                 uploader = info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע"
+                shares = info.get("repost_count", 0) or info.get("share_count", 0) or 0
                 data.append({
                     "פלטפורמה": plat,
                     "שם משתמש": uploader,
@@ -61,17 +62,22 @@ def fetch_social_data():
                     "קישור": url,
                     "צפיות": info.get("view_count", 0) or 0,
                     "לייקים": info.get("like_count", 0) or 0,
-                    "תגובות": info.get("comment_count", 0) or 0
+                    "תגובות": info.get("comment_count", 0) or 0,
+                    "שיתופים": shares
                 })
             except:
-                data.append({"פלטפורמה": plat, "שם משתמש": "שגיאה בשליפה", "תמונה": "", "שם סרטון": "שגיאה בשליפה", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0})
+                data.append({
+                    "פלטפורמה": plat, "שם משתמש": "שגיאה בשליפה", "תמונה": "", 
+                    "שם סרטון": "שגיאה בשליפה", "קישור": url, 
+                    "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                })
     df = pd.DataFrame(data)
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
 
 if os.path.exists(CACHE_FILE):
     df = pd.read_csv(CACHE_FILE)
-    if "שם משתמש" not in df.columns:
+    if "שיתופים" not in df.columns or "שם משתמש" not in df.columns:
         with st.spinner("מעדכן מבנה נתונים..."):
             df = fetch_social_data()
 else:
@@ -83,17 +89,18 @@ with st.sidebar:
         with st.spinner("מרענן..."):
             df = fetch_social_data()
 
-# כרטיס סיכום עליון
-c1, c2, c3 = st.columns(3)
+# כרטיסי סיכום עליונים (4 עמודות)
+c1, c2, c3, c4 = st.columns(4)
 c1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
 c2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
 c3.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
+c4.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
 
 st.markdown("---")
 
 # תצוגת הטבלה
 st.dataframe(
-    df[["פלטפורמה", "שם משתמש", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות"]],
+    df[["פלטפורמה", "שם משתמש", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות", "שיתופים"]],
     column_config={
         "פלטפורמה": "פלטפורמה",
         "שם משתמש": "שם משתמש",
@@ -103,6 +110,7 @@ st.dataframe(
         "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
         "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
         "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
+        "שיתופים": st.column_config.NumberColumn("שיתופים", format="%d"),
     },
     use_container_width=True,
     hide_index=True
