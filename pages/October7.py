@@ -46,76 +46,29 @@ URLS = [
     "https://youtube.com/shorts/s7dlo-EO6ps", "https://youtube.com/shorts/XSEI6HgRjzQ"
 ]
 
-def get_meta_auth_data():
-    """שולף את כל העמודים והטוקנים המנוהלים מהטוקן הראשי"""
+def get_meta_pages():
+    """שולף את העמודים והטוקנים המנוהלים"""
     pages = []
-    ig_accounts = {}
     try:
-        url = f"https://graph.facebook.com/v26.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token={META_USER_TOKEN}"
+        url = f"https://graph.facebook.com/v26.0/me/accounts?fields=id,name,access_token&access_token={META_USER_TOKEN}"
         res = requests.get(url).json()
         for acc in res.get("data", []):
-            p_token = acc.get("access_token")
-            p_id = acc.get("id")
-            p_name = acc.get("name", "עמוד i24NEWS")
-            pages.append({"id": p_id, "token": p_token, "name": p_name})
-            
-            ig = acc.get("instagram_business_account")
-            if ig:
-                ig_id = ig.get("id")
-                ig_accounts[ig_id] = {"token": p_token, "name": p_name}
-    except Exception as e:
-        print(f"Meta Auth Error: {e}")
-    return pages, ig_accounts
+            pages.append({
+                "id": acc.get("id"),
+                "token": acc.get("access_token"),
+                "name": acc.get("name", "i24NEWS")
+            })
+    except Exception:
+        pass
+    return pages
 
 def fetch_social_data():
     data = []
-    meta_pages, ig_accounts = get_meta_auth_data()
-    
-    # איסוף מראש של פוסטים/רילס מפייסבוק דרך ה-API
-    fb_cache = {}
-    for page in meta_pages:
-        try:
-            p_id = page["id"]
-            p_token = page["token"]
-            p_name = page["name"]
-            posts_url = f"https://graph.facebook.com/v26.0/{p_id}/posts?fields=id,message,permalink_url,shares,likes.summary(true),comments.summary(true),views&access_token={p_token}"
-            res = requests.get(posts_url).json()
-            for post in res.get("data", []):
-                post_id = post.get("id")
-                fb_cache[post_id] = {
-                    "username": p_name,
-                    "title": post.get("message") or "ללא כותרת",
-                    "views": post.get("views", 0),
-                    "likes": post.get("likes", {}).get("summary", {}).get("total_count", 0),
-                    "comments": post.get("comments", {}).get("summary", {}).get("total_count", 0),
-                    "shares": post.get("shares", {}).get("count", 0)
-                }
-        except Exception:
-            pass
+    meta_pages = get_meta_pages()
+    # נשתמש בטוקן של העמוד הראשון כברירת מחדל לשליפות ישירות
+    default_token = meta_pages[0]["token"] if meta_pages else META_USER_TOKEN
+    default_name = meta_pages[0]["name"] if meta_pages else "i24NEWS"
 
-    # איסוף מראש של מדיה מאינסטגרם דרך ה-API
-    ig_cache = {}
-    for ig_id, details in ig_accounts.items():
-        try:
-            ig_token = details["token"]
-            ig_name = details["name"]
-            media_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,shortcode,caption,like_count,comments_count,play_count,permalink&access_token={ig_token}"
-            res = requests.get(media_url).json()
-            for m in res.get("data", []):
-                code = m.get("shortcode")
-                if code:
-                    ig_cache[code] = {
-                        "username": ig_name,
-                        "title": m.get("caption") or "ללא כותרת",
-                        "views": m.get("play_count", 0),
-                        "likes": m.get("like_count", 0),
-                        "comments": m.get("comments_count", 0),
-                        "shares": 0 # אינסטגרם API לא חושף שיתופים ישירות לפוסטים בודדים
-                    }
-        except Exception:
-            pass
-
-    # מעבר על הקישורים ושליפה בהתאם לפלטפורמה
     with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
         for url in URLS:
             if "facebook.com" in url or "fb.watch" in url:
@@ -123,65 +76,60 @@ def fetch_social_data():
                 match = re.search(r'/(?:reel|videos|posts)/(\d+)', url)
                 fb_id = match.group(1) if match else None
                 
-                # חיפוש במטמון של ה-API
-                matched_data = None
-                if fb_id and fb_id in fb_cache:
-                    matched_data = fb_cache[fb_id]
-                else:
-                    # חיפוש לפי התאמת מזהה חלקי
-                    for k, v in fb_cache.items():
-                        if fb_id and fb_id in k:
-                            matched_data = v
-                            break
+                if fb_id:
+                    api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={default_token}"
+                    try:
+                        res = requests.get(api_url).json()
+                        if "error" not in res:
+                            desc = res.get("description") or "ללא כותרת"
+                            views = res.get("views", 0) or 0
+                            
+                            likes_count = 0
+                            comments_count = 0
+                            shares_count = 0
+                            
+                            for insight in res.get("video_insights", {}).get("data", []):
+                                metric_name = insight.get("name")
+                                values = insight.get("values", [{}])[0].get("value", {})
+                                if metric_name == "post_video_likes_by_reaction_type":
+                                    likes_count = sum(values.values()) # סכום כל הריאקציות
+                                elif metric_name == "post_video_social_actions":
+                                    comments_count = values.get("COMMENT", 0)
+                                    shares_count = values.get("SHARE", 0)
+                            
+                            data.append({
+                                "פלטפורמה": plat,
+                                "שם משתמש": default_name,
+                                "תמונה": "",
+                                "שם סרטון": desc,
+                                "קישור": url,
+                                "צפיות": views,
+                                "לייקים": likes_count,
+                                "תגובות": comments_count,
+                                "שיתופים": shares_count
+                            })
+                            continue
+                    except Exception:
+                        pass
                 
-                if matched_data:
-                    data.append({
-                        "פלטפורמה": plat,
-                        "שם משתמש": matched_data["username"],
-                        "תמונה": "",
-                        "שם סרטון": matched_data["title"],
-                        "קישור": url,
-                        "צפיות": matched_data["views"],
-                        "לייקים": matched_data["likes"],
-                        "תגובות": matched_data["comments"],
-                        "שיתופים": matched_data["shares"]
-                    })
-                else:
-                    # ברירת מחדל אם לא נמצא ב-API
-                    data.append({
-                        "פלטפורמה": plat, "שם משתמש": "i24NEWS", "תמונה": "", 
-                        "שם סרטון": "לא נמצא ב-API", "קישור": url, 
-                        "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
-                    })
+                # במקרה ששליפת ה-API נכשלה
+                data.append({
+                    "פלטפורמה": plat, "שם משתמש": default_name, "תמונה": "", 
+                    "שם סרטון": "שגיאה בשליפת API", "קישור": url, 
+                    "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                })
 
             elif "instagram.com" in url:
                 plat = "אינסטגרם"
-                match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
-                shortcode = match.group(1) if match else None
-                
-                matched_data = ig_cache.get(shortcode) if shortcode else None
-                
-                if matched_data:
-                    data.append({
-                        "פלטפורמה": plat,
-                        "שם משתמש": matched_data["username"],
-                        "תמונה": "",
-                        "שם סרטון": matched_data["title"],
-                        "קישור": url,
-                        "צפיות": matched_data["views"],
-                        "לייקים": matched_data["likes"],
-                        "תגובות": matched_data["comments"],
-                        "שיתופים": matched_data["shares"]
-                    })
-                else:
-                    data.append({
-                        "פלטפורמה": plat, "שם משתמש": "i24NEWS", "תמונה": "", 
-                        "שם סרטון": "לא נמצא ב-API", "קישור": url, 
-                        "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
-                    })
+                # אינסטגרם יטופל בהמשך באותו עיקרון או דרך ה-API העסקי
+                data.append({
+                    "פלטפורמה": plat, "שם משתמש": default_name, "תמונה": "", 
+                    "שם סרטון": "אינסטגרם API", "קישור": url, 
+                    "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                })
 
             else:
-                # טיקטוק, X, יוטיוב נשלפים דרך yt_dlp כרגיל
+                # טיקטוק, X, יוטיוב דרך yt_dlp
                 if "tiktok.com" in url:
                     plat = "טיקטוק"
                 elif "x.com" in url or "twitter.com" in url:
