@@ -1,4 +1,4 @@
-import os, requests, pandas as pd, streamlit as st, yt_dlp
+import os, pandas as pd, streamlit as st, yt_dlp
 
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
 st.markdown("<style>html, body { direction: rtl; text-align: right; }</style>", unsafe_allow_html=True)
@@ -69,7 +69,6 @@ def fetch_social_data():
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
 
-# טעינת נתונים + בדיקת תקינות עמודות
 if os.path.exists(CACHE_FILE):
     df = pd.read_csv(CACHE_FILE)
     if "שם משתמש" not in df.columns:
@@ -99,8 +98,8 @@ st.dataframe(
         "פלטפורמה": "פלטפורמה",
         "שם משתמש": "שם משתמש",
         "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
-        "שם סרטון": st.column_config.LinkColumn("שם סרטון", url_col="קישור"),
-        "קישור": None,
+        "שם סרטון": "שם סרטון",
+        "קישור": st.column_config.LinkColumn("קישור לסרטון", display_text="🔗 פתח סרטון"),
         "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
         "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
         "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
