@@ -217,34 +217,34 @@ with st.sidebar:
         with st.spinner("מרענן מול ה-API והרשתות..."):
             df = fetch_all_social_data()
 
-# כרטיסי סיכום עליונים מעוצבים עם קו מקווקו ורקע אפור בהיר
+# כרטיסי סיכום עליונים מעוצבים במרכז עם קו מקווקו
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">סך הכל צפיות</div>
-            <div class="metric-value">{df['צפיות'].sum():,0f}</div>
+            <div class="metric-value">{int(df['צפיות'].sum()):,}</div>
         </div>
     """, unsafe_allow_html=True)
 with col2:
     st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">סך הכל לייקים</div>
-            <div class="metric-value">{df['לייקים'].sum():,0f}</div>
+            <div class="metric-value">{int(df['לייקים'].sum()):,}</div>
         </div>
     """, unsafe_allow_html=True)
 with col3:
     st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">סך הכל תגובות</div>
-            <div class="metric-value">{df['תגובות'].sum():,0f}</div>
+            <div class="metric-value">{int(df['תגובות'].sum()):,}</div>
         </div>
     """, unsafe_allow_html=True)
 with col4:
     st.markdown(f"""
         <div class="metric-card">
             <div class="metric-title">סך הכל שיתופים</div>
-            <div class="metric-value">{df['שיתופים'].sum():,0f}</div>
+            <div class="metric-value">{int(df['שיתופים'].sum()):,}</div>
         </div>
     """, unsafe_allow_html=True)
 
