@@ -2,21 +2,78 @@ import os, re, requests, pandas as pd, streamlit as st, yt_dlp
 
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
 
-# CSS עיצובי למירכוז כללי ויישור הטבלה
+# עיצוב CSS מתקדם לדשבורד יוקרתי וממורכז
 st.markdown("""
     <style>
-    .block-container {
+    .main-title {
+        text-align: center;
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 2rem;
+    }
+    .metric-card {
+        background-color: #f8f9fa;
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .metric-title {
+        font-size: 0.95rem;
+        color: #64748b;
+        margin-bottom: 8px;
+        font-weight: 600;
         text-align: center;
     }
-    div[data-testid="stDataFrame"] th, 
-    div[data-testid="stDataFrame"] td {
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #0f172a;
+        text-align: center;
+    }
+    .custom-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .custom-table th {
+        background-color: #f1f5f9;
+        color: #334155;
+        padding: 12px 16px;
         text-align: center !important;
-        justify-content: center !important;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .custom-table td {
+        padding: 12px 16px;
+        text-align: center !important;
+        vertical-align: middle !important;
+        color: #475569;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .custom-table tr:hover {
+        background-color: #f8fafc;
+    }
+    .video-link {
+        color: #2563eb;
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .video-link:hover {
+        text-decoration: underline;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("October 7 - The last day of my life")
+st.markdown('<div class="main-title">October 7 - The last day of my life</div>', unsafe_allow_html=True)
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "October7.csv")
 META_USER_TOKEN = "EAAORARdXiYYBS9qNAtINW7KnKzvAOObamroZA1ZBqsS9U4OsiPv5iKNtK6rulafegvF4Xy8lZA3ZA0W3McOPrjLi0zDQypwUVgnSinhHvtwjOE8COktwJWVlZAhnknlb8z4zzLHU4CNkNU1SlX6ZCAqrw5wTO0R6ZAuxolZBeQxFRdAnlZAqSkQOCYA3tZCjERQk3XQiaCvh4ehdq5WeoLFTfwolyISwUhaelXcwO6tKyJxZCJlSU0LS2wAPAAUuZCpzerXdMgC0eVvk9PNyjnhndFJgEtcbg9O2"
@@ -160,37 +217,59 @@ with st.sidebar:
         with st.spinner("מרענן מול ה-API והרשתות..."):
             df = fetch_all_social_data()
 
-# כרטיסי סיכום עליונים נפרדים (Cards)
+# כרטיסי סיכום עליונים מעוצבים עם קו מקווקו ורקע אפור בהיר
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    with st.container(border=True):
-        st.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">סך הכל צפיות</div>
+            <div class="metric-value">{df['צפיות'].sum():,0f}</div>
+        </div>
+    """, unsafe_allow_html=True)
 with col2:
-    with st.container(border=True):
-        st.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">סך הכל לייקים</div>
+            <div class="metric-value">{df['לייקים'].sum():,0f}</div>
+        </div>
+    """, unsafe_allow_html=True)
 with col3:
-    with st.container(border=True):
-        st.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">סך הכל תגובות</div>
+            <div class="metric-value">{df['תגובות'].sum():,0f}</div>
+        </div>
+    """, unsafe_allow_html=True)
 with col4:
-    with st.container(border=True):
-        st.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-title">סך הכל שיתופים</div>
+            <div class="metric-value">{df['שיתופים'].sum():,0f}</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-st.markdown("---")
+st.markdown("<br>", unsafe_allow_html=True)
 
-# תצוגת הטבלה עם רוחבים מותאמים ופסיקים באלפים
-st.dataframe(
-    df[["פלטפורמה", "שם משתמש", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות", "שיתופים"]],
-    column_config={
-        "פלטפורמה": st.column_config.TextColumn("פלטפורמה", width="small"),
-        "שם משתמש": st.column_config.TextColumn("שם משתמש", width="medium"),
-        "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
-        "שם סרטון": st.column_config.TextColumn("שם סרטון", width="large"),
-        "קישור": st.column_config.LinkColumn("קישור לסרטון", display_text="🔗 פתח סרטון", width="small"),
-        "צפיות": st.column_config.NumberColumn("צפיות", format="%,d"),
-        "לייקים": st.column_config.NumberColumn("לייקים", format="%,d"),
-        "תגובות": st.column_config.NumberColumn("תגובות", format="%,d"),
-        "שיתופים": st.column_config.NumberColumn("שיתופים", format="%,d"),
-    },
-    use_container_width=True,
-    hide_index=True
-)
+# בניית טבלה בעיצוב מותאם אישית (רוחבים מותאמים, בלי עמודת קישור נפרדת, שם הסרטון הוא הקישור)
+table_html = """
+<table class="custom-table">
+    <thead>
+        <tr>
+            <th style="width: 10%;">פלטפורמה</th>
+            <th style="width: 14%;">שם משתמש</th>
+            <th style="width: 7%;">תמונה</th>
+            <th style="width: 48%;">שם סרטון</th>
+            <th style="width: 5%;">צפיות</th>
+            <th style="width: 5%;">לייקים</th>
+            <th style="width: 5%;">תגובות</th>
+            <th style="width: 6%;">שיתופים</th>
+        </tr>
+    </thead>
+    <tbody>
+"""
+
+for _, row in df.iterrows():
+    plat = row['פלטפורמה']
+    user = row['שם משתמש']
+    thumb = row['תמונה']
+    thumb_tag = f'<img src="{thumb}" style="width: 36px;
