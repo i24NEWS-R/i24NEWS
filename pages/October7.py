@@ -69,8 +69,12 @@ def fetch_social_data():
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
 
+# טעינת נתונים + בדיקת תקינות עמודות
 if os.path.exists(CACHE_FILE):
     df = pd.read_csv(CACHE_FILE)
+    if "שם משתמש" not in df.columns:
+        with st.spinner("מעדכן מבנה נתונים..."):
+            df = fetch_social_data()
 else:
     with st.spinner("טוען נתונים..."):
         df = fetch_social_data()
@@ -96,7 +100,7 @@ st.dataframe(
         "שם משתמש": "שם משתמש",
         "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
         "שם סרטון": st.column_config.LinkColumn("שם סרטון", url_col="קישור"),
-        "קישור": None,  # מורשה ל-Streamlit להסתיר את עמודת ה-URL המקורית
+        "קישור": None,
         "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
         "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
         "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
