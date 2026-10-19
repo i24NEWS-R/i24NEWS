@@ -1,7 +1,20 @@
 import os, re, requests, pandas as pd, streamlit as st, yt_dlp
 
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
-st.markdown("<style>html, body { direction: rtl; text-align: right; }</style>", unsafe_allow_html=True)
+
+# CSS עיצובי למירכוז כללי ויישור הטבלה
+st.markdown("""
+    <style>
+    .block-container {
+        text-align: center;
+    }
+    div[data-testid="stDataFrame"] th, 
+    div[data-testid="stDataFrame"] td {
+        text-align: center !important;
+        justify-content: center !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 st.title("October 7 - The last day of my life")
 
@@ -16,7 +29,7 @@ URLS = [
     "https://www.facebook.com/reel/1834808051214925", "https://www.facebook.com/reel/2003722767682462",
     "https://www.facebook.com/reel/2004915936880315", "https://www.facebook.com/reel/28594037286923487",
     "https://www.facebook.com/reel/3189661697897533", "https://www.facebook.com/reel/996450340148747",
-    # Instagram (שמורים ברשימה, יטופלו בהמשך)
+    # Instagram (ממתין)
     "https://www.instagram.com/p/Deb5bDXD6Gs/", "https://www.instagram.com/p/Deb5UJfFKU1/",
     "https://www.instagram.com/p/Deb8nh5Du4y/", "https://www.instagram.com/p/DeeYjQ2DnYf/",
     "https://www.instagram.com/p/DeeYTozDXdP/", "https://www.instagram.com/p/DeeYzU5lXQ_/",
@@ -47,7 +60,6 @@ URLS = [
 ]
 
 def fetch_facebook_data():
-    """שליפת נתוני פייסבוק דרך ה-Meta API כולל שם העמוד והתמונה הממוזערת"""
     fb_data = []
     for url in URLS:
         if "facebook.com" in url or "fb.watch" in url:
@@ -64,10 +76,7 @@ def fetch_facebook_data():
                         username = res.get("from", {}).get("name", "i24NEWS")
                         picture = res.get("picture", "")
                         
-                        likes = 0
-                        comments = 0
-                        shares = 0
-                        
+                        likes, comments, shares = 0, 0, 0
                         for insight in res.get("video_insights", {}).get("data", []):
                             m_name = insight.get("name")
                             values = insight.get("values", [{}])[0].get("value", {})
@@ -78,15 +87,9 @@ def fetch_facebook_data():
                                 shares = values.get("SHARE", 0)
                         
                         fb_data.append({
-                            "פלטפורמה": "פייסבוק",
-                            "שם משתמש": username,
-                            "תמונה": picture,
-                            "שם סרטון": desc,
-                            "קישור": url,
-                            "צפיות": views,
-                            "לייקים": likes,
-                            "תגובות": comments,
-                            "שיתופים": shares
+                            "פלטפורמה": "פייסבוק", "שם משתמש": username, "תמונה": picture,
+                            "שם סרטון": desc, "קישור": url, "צפיות": views,
+                            "לייקים": likes, "תגובות": comments, "שיתופים": shares
                         })
                         continue
                 except Exception:
@@ -100,7 +103,6 @@ def fetch_facebook_data():
     return fb_data
 
 def fetch_ytdlp_data():
-    """שליפת שאר הרשתות דרך yt_dlp (וקישור אינסטגרם כממתין)"""
     other_data = []
     with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
         for url in URLS:
@@ -125,14 +127,10 @@ def fetch_ytdlp_data():
                     uploader = info.get("uploader") or info.get("channel") or "לא ידוע"
                     shares = info.get("repost_count", 0) or info.get("share_count", 0) or 0
                     other_data.append({
-                        "פלטפורמה": plat,
-                        "שם משתמש": uploader,
-                        "תמונה": info.get("thumbnail", ""),
+                        "פלטפורמה": plat, "שם משתמש": uploader, "תמונה": info.get("thumbnail", ""),
                         "שם סרטון": info.get("description") or info.get("title") or "ללא כותרת",
-                        "קישור": url,
-                        "צפיות": info.get("view_count", 0) or 0,
-                        "לייקים": info.get("like_count", 0) or 0,
-                        "תגובות": info.get("comment_count", 0) or 0,
+                        "קישור": url, "צפיות": info.get("view_count", 0) or 0,
+                        "לייקים": info.get("like_count", 0) or 0, "תגובות": info.get("comment_count", 0) or 0,
                         "שיתופים": shares
                     })
                 except:
@@ -144,7 +142,6 @@ def fetch_ytdlp_data():
     return other_data
 
 def fetch_all_social_data():
-    """איחוד כל נתוני הפלטפורמות לטבלה אחת"""
     df = pd.DataFrame(fetch_facebook_data() + fetch_ytdlp_data())
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
@@ -163,26 +160,36 @@ with st.sidebar:
         with st.spinner("מרענן מול ה-API והרשתות..."):
             df = fetch_all_social_data()
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
-c2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
-c3.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
-c4.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
+# כרטיסי סיכום עליונים נפרדים (Cards)
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    with st.container(border=True):
+        st.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
+with col2:
+    with st.container(border=True):
+        st.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
+with col3:
+    with st.container(border=True):
+        st.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
+with col4:
+    with st.container(border=True):
+        st.metric("סך הכל שיתופים", f"{df['שיתופים'].sum():,}")
 
 st.markdown("---")
 
+# תצוגת הטבלה עם רוחבים מותאמים ופסיקים באלפים
 st.dataframe(
     df[["פלטפורמה", "שם משתמש", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות", "שיתופים"]],
     column_config={
-        "פלטפורמה": "פלטפורמה",
-        "שם משתמש": "שם משתמש",
+        "פלטפורמה": st.column_config.TextColumn("פלטפורמה", width="small"),
+        "שם משתמש": st.column_config.TextColumn("שם משתמש", width="medium"),
         "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
-        "שם סרטון": "שם סרטון",
-        "קישור": st.column_config.LinkColumn("קישור לסרטון", display_text="🔗 פתח סרטון"),
-        "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
-        "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
-        "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
-        "שיתופים": st.column_config.NumberColumn("שיתופים", format="%d"),
+        "שם סרטון": st.column_config.TextColumn("שם סרטון", width="large"),
+        "קישור": st.column_config.LinkColumn("קישור לסרטון", display_text="🔗 פתח סרטון", width="small"),
+        "צפיות": st.column_config.NumberColumn("צפיות", format="%,d"),
+        "לייקים": st.column_config.NumberColumn("לייקים", format="%,d"),
+        "תגובות": st.column_config.NumberColumn("תגובות", format="%,d"),
+        "שיתופים": st.column_config.NumberColumn("שיתופים", format="%,d"),
     },
     use_container_width=True,
     hide_index=True
