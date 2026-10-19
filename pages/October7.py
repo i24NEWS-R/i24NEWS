@@ -71,13 +71,8 @@ PLATFORM_COLORS = {
     "יוטיוב": "#FF0000",
 }
 
-# הטוקן החדש של מטא שסיפקת
-DEFAULT_META_TOKEN = "EAAORARdXiYYBSZBEyajmvOpKe6epxIba2nzINk9qQGsWUy8qYIG9Nz871ZB9mAFECEmxTVZC8UCA7WXZAkF11nLdWX0pZCUdAO8m8ZBgfVh7IseEoY8ZAdA3XYjPai0LIWJ7pZBwgELv9rdnn0GZA423ZBr2dFiwWdF05UWj1NlW9ZBoW1CSEFABMPZB3ZAqw5ZAvKtrCRZCa9xmhZCBUVOt5QmZAaw5MCjj18NQNyxuLXIF5yXUvzb8uezLvZCbYMdsQn0UtvYqZCdZCM9ORgRKVZAfUZAzGAGLQ1VAAtZC4rM"
-
-# שדות בסיידבר להגדרת הטוקן
-with st.sidebar:
-    st.header("⚙️ הגדרות ובקרה")
-    meta_token_input = st.text_input("Meta User Access Token:", value=DEFAULT_META_TOKEN, type="password")
+# טוקן מטא שמור פנימית (מוסתר מהמשתמש ומהמסך)
+META_USER_TOKEN = "EAAORARdXiYYBSZBEyajmvOpKe6epxIba2nzINk9qQGsWUy8qYIG9Nz871ZB9mAFECEmxTVZC8UCA7WXZAkF11nLdWX0pZCUdAO8m8ZBgfVh7IseEoY8ZAdA3XYjPai0LIWJ7pZBwgELv9rdnn0GZA423ZBr2dFiwWdF05UWj1NlW9ZBoW1CSEFABMPZB3ZAqw5ZAvKtrCRZCa9xmhZCBUVOt5QmZAaw5MCjj18NQNyxuLXIF5yXUvzb8uezLvZCbYMdsQn0UtvYqZCdZCM9ORgRKVZAfUZAzGAGLQ1VAAtZC4rM"
 
 # רשימת הקישורים המלאה
 URLS = [
@@ -149,148 +144,184 @@ URLS = [
 ]
 
 
-def clean_title(title):
-    """ניקוי עמוק של הכותרת מהמחרוזות המיותרות"""
-    if not title:
-        return "ללא כותרת"
-    title = re.sub(
-        r"^[\d\.,]+[KkMm]?\s*(views|reactions|shares|comments|צפיות|לייקים).*?[\•\|]",
-        "",
-        title,
-        flags=re.IGNORECASE,
-    )
-    if "|" in title:
-        parts = title.split("|")
-        title = parts[-1].strip() if len(parts[-1].strip()) > 3 else parts[0].strip()
-    return title.strip() or "ללא כותרת"
+def extract_fb_id(url):
+    """חילוץ מזהה הפוסט/רילס מקישור פייסבוק"""
+    match = re.search(r'/(?:reel|videos|posts)/(\d+)', url)
+    return match.group(1) if match else None
 
 
-def fetch_meta_data_for_urls(urls, token):
-    """שולף נתונים עבור פייסבוק ואינסטגרם ישירות דרך ה-Meta Graph API באמצעות הטוקן"""
-    meta_results = {}
-    if not token:
-        return meta_results
+def extract_ig_shortcode(url):
+    """חילוץ shortcode מקישור אינסטגרם"""
+    match = re.search(r'/(?:p|reel)/([^/?#&]+)', url)
+    return match.group(1) if match else None
 
+
+def fetch_meta_analytics_map():
+    """מביא את מפת העמודים והטוקנים של מטא"""
+    meta_map = {}
     try:
-        # שליפת רשימת העמודים והטוקנים הספציפיים שלהם
-        acc_url = f"https://graph.facebook.com/v26.0/me/accounts?fields=access_token,instagram_business_account&access_token={token}"
-        res = requests.get(acc_url).json()
-        accounts = res.get("data", [])
-        
-        # איסוף פוסטים/רילס מכל העמודים המנוהלים
-        for acc in accounts:
+        url = f"https://graph.facebook.com/v26.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token={META_USER_TOKEN}"
+        res = requests.get(url).json()
+        for acc in res.get("data", []):
             page_token = acc.get("access_token")
             page_id = acc.get("id")
+            ig_acc = acc.get("instagram_business_account", {}).get("id")
             if page_token:
-                # שליפת פוסטים מהעמוד
-                posts_url = f"https://graph.facebook.com/v26.0/{page_id}/posts?fields=id,message,created_time,shares,likes.summary(true),comments.summary(true),permalink_url&access_token={page_token}"
-                p_res = requests.get(posts_url).json()
-                for post in p_res.get("data", []):
-                    p_id = post.get("id")
-                    # שמירת הנתונים במילון לפי מזהה או קישור
-                    meta_results[p_id] = {
-                        "כותרת": clean_title(post.get("message", "ללא כותרת")),
-                        "תמונה": "",
-                        "צפיות": 0, # פייסבוק לעיתים דורש אינסייטס נפרד לצפיות פוסט, כאן נביא מעורבות מלאה
-                        "לייקים": post.get("likes", {}).get("summary", {}).get("total_count", 0),
-                        "תגובות": post.get("comments", {}).get("summary", {}).get("total_count", 0),
-                        "שיתופים": post.get("shares", {}).get("count", 0)
-                    }
+                meta_map[page_id] = {
+                    "page_token": page_token,
+                    "ig_id": ig_acc
+                }
     except Exception as e:
-        print(f"Meta API Error: {e}")
-        
-    return meta_results
+        print(f"Meta Accounts Fetch Error: {e}")
+    return meta_map
 
 
 def fetch_social_data():
     data = []
+    meta_accounts = fetch_meta_analytics_map()
     
-    # שליפת נתוני מטא מראש באמצעות ה-API
-    meta_api_data = fetch_meta_data_for_urls(URLS, meta_token_input)
-    
+    # חילוץ רשימת טוקנים של העמודים לבדיקה מול ה-API
+    page_tokens = [acc["page_token"] for acc in meta_accounts.values()]
+    first_page_token = page_tokens[0] if page_tokens else META_USER_TOKEN
+
     ydl_opts = {"quiet": True, "skip_download": True}
+    
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for url in URLS:
-            try:
-                platform = "אחר"
-                if "facebook.com" in url or "fb.watch" in url:
-                    platform = "פייסבוק"
-                elif "instagram.com" in url:
-                    platform = "אינסטגרם"
-                elif "tiktok.com" in url:
+            if "facebook.com" in url or "fb.watch" in url:
+                platform = "פייסבוק"
+                fb_id = extract_fb_id(url)
+                fetched_via_api = False
+                
+                if fb_id:
+                    # ניסיון שליפה ישיר מה-API עם Graph API
+                    for p_token in page_tokens:
+                        api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=title,description,message,views,video_insights,likes.summary(true),comments.summary(true),shares&access_token={p_token}"
+                        res = requests.get(api_url).json()
+                        if "error" not in res:
+                            # כותרת/תיאור מלא ללא פילטרים
+                            full_title = res.get("description") or res.get("message") or res.get("title") or "ללא כותרת"
+                            views = res.get("views", 0)
+                            
+                            # ניסיון לחלץ צפיות וידאו פנימיות אם קיימות
+                            if not views and "video_insights" in res:
+                                for ins in res["video_insights"].get("data", []):
+                                    if ins.get("name") in ["total_video_views", "post_video_views"]:
+                                        views = ins.get("values", [{}])[0].get("value", 0)
+
+                            likes = res.get("likes", {}).get("summary", {}).get("total_count", 0)
+                            comments = res.get("comments", {}).get("summary", {}).get("total_count", 0)
+                            shares = res.get("shares", {}).get("count", 0)
+                            
+                            data.append({
+                                "פלטפורמה": platform,
+                                "כותרת": full_title,
+                                "קישור": url,
+                                "תמונה": "",
+                                "צפיות": views,
+                                "לייקים": likes,
+                                "תגובות": comments,
+                                "שיתופים": shares,
+                            })
+                            fetched_via_api = True
+                            break
+                            
+                if not fetched_via_api:
+                    # גיבוי yt_dlp אם ה-API החזיר שגיאה ל-ID הספציפי
+                    try:
+                        info = ydl.extract_info(url, download=False)
+                        data.append({
+                            "פלטפורמה": platform,
+                            "כותרת": info.get("description") or info.get("title") or "ללא כותרת",
+                            "קישור": url,
+                            "תמונה": info.get("thumbnail", ""),
+                            "צפיות": info.get("view_count", 0) or 0,
+                            "לייקים": info.get("like_count", 0) or 0,
+                            "תגובות": info.get("comment_count", 0) or 0,
+                            "שיתופים": info.get("repost_count", 0) or info.get("share_count", 0) or 0,
+                        })
+                    except Exception:
+                        data.append({
+                            "פלטפורמה": platform,
+                            "כותרת": "שגיאה בשליפת הנתונים",
+                            "קישור": url,
+                            "תמונה": "",
+                            "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                        })
+
+            elif "instagram.com" in url:
+                platform = "אינסטגרם"
+                shortcode = extract_ig_shortcode(url)
+                fetched_via_api = False
+                
+                # שליפת נתוני אינסטגרם
+                try:
+                    info = ydl.extract_info(url, download=False)
+                    # לקיחת התיאור/כותרת המלאה ללא שום סינון
+                    full_title = info.get("description") or info.get("title") or "ללא כותרת"
+                    
+                    data.append({
+                        "פלטפורמה": platform,
+                        "כותרת": full_title,
+                        "קישור": url,
+                        "תמונה": info.get("thumbnail", ""),
+                        "צפיות": info.get("view_count", 0) or 0,
+                        "לייקים": info.get("like_count", 0) or 0,
+                        "תגובות": info.get("comment_count", 0) or 0,
+                        "שיתופים": info.get("repost_count", 0) or 0,
+                    })
+                except Exception:
+                    data.append({
+                        "פלטפורמה": platform,
+                        "כותרת": "שגיאה בשליפת הנתונים",
+                        "קישור": url,
+                        "תמונה": "",
+                        "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                    })
+
+            else:
+                # TikTok, X (Twitter), YouTube Shorts
+                if "tiktok.com" in url:
                     platform = "טיקטוק"
                 elif "x.com" in url or "twitter.com" in url:
                     platform = "X (טוויטר)"
                 elif "youtube.com" in url or "youtu.be" in url:
                     platform = "יוטיוב"
-
-                # עבור פייסבוק ואינסטגרם ננסה קודם לטעון מה-API הרשמי אם קיים במילון, אחרת נעזר ב-yt_dlp כמקור משלים
-                info = ydl.extract_info(url, download=False)
-                
-                raw_title = info.get("title", "ללא כותרת")
-                title = clean_title(raw_title)
-                thumbnail = info.get("thumbnail", "")
-                views = info.get("view_count", 0) or 0
-                likes = info.get("like_count", 0) or 0
-                comments = info.get("comment_count", 0) or 0
-                shares = (
-                    info.get("repost_count", 0)
-                    or info.get("share_count", 0)
-                    or 0
-                )
-
-                data.append({
-                    "פלטפורמה": platform,
-                    "כותרת": title,
-                    "קישור": url,
-                    "תמונה": thumbnail,
-                    "צפיות": views,
-                    "לייקים": likes,
-                    "תגובות": comments,
-                    "שיתופים": shares,
-                })
-            except Exception:
-                # זיהוי פלטפורמה בשגיאה
-                if "facebook.com" in url:
-                    p = "פייסבוק"
-                elif "instagram.com" in url:
-                    p = "אינסטגרם"
-                elif "tiktok.com" in url:
-                    p = "טיקטוק"
-                elif "x.com" in url or "twitter.com" in url:
-                    p = "X (טוויטר)"
-                elif "youtube.com" in url or "youtu.be" in url:
-                    p = "יוטיוב"
                 else:
-                    p = "שגיאה"
+                    platform = "אחר"
 
-                data.append({
-                    "פלטפורמה": p,
-                    "כותרת": "שגיאה בשליפת הנתונים",
-                    "קישור": url,
-                    "תמונה": "",
-                    "צפיות": 0,
-                    "לייקים": 0,
-                    "תגובות": 0,
-                    "שיתופים": 0,
-                })
+                try:
+                    info = ydl.extract_info(url, download=False)
+                    # ללא סינון כותרת
+                    full_title = info.get("title") or info.get("description") or "ללא כותרת"
+                    
+                    data.append({
+                        "פלטפורמה": platform,
+                        "כותרת": full_title,
+                        "קישור": url,
+                        "תמונה": info.get("thumbnail", ""),
+                        "צפיות": info.get("view_count", 0) or 0,
+                        "לייקים": info.get("like_count", 0) or 0,
+                        "תגובות": info.get("comment_count", 0) or 0,
+                        "שיתופים": info.get("repost_count", 0) or info.get("share_count", 0) or 0,
+                    })
+                except Exception:
+                    data.append({
+                        "פלטפורמה": platform,
+                        "כותרת": "שגיאה בשליפת הנתונים",
+                        "קישור": url,
+                        "תמונה": "",
+                        "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                    })
 
     df = pd.DataFrame(data)
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
 
 
-# טעינת נתונים עם הודעת טעינה ברורה
-required_cols = [
-    "פלטפורמה",
-    "כותרת",
-    "קישור",
-    "תמונה",
-    "צפיות",
-    "לייקים",
-    "תגובות",
-    "שיתופים",
-]
+# טעינת נתונים
+required_cols = ["פלטפורמה", "כותרת", "קישור", "תמונה", "צפיות", "לייקים", "תגובות", "שיתופים"]
+
 if os.path.exists(CACHE_FILE):
     df = pd.read_csv(CACHE_FILE)
     if not all(col in df.columns for col in required_cols):
@@ -302,6 +333,7 @@ else:
 
 # כפתור רענון בסיידבר
 with st.sidebar:
+    st.header("⚙️ הגדרות ובקרה")
     if st.button("🔄 רענן נתונים מחדש מהרשתות"):
         with st.spinner("🔄 הנתונים נטענים מחדש מהרשתות החברתיות..."):
             df = fetch_social_data()
