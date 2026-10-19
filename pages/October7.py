@@ -1,4 +1,4 @@
-import os, re, requests, pandas as pd, streamlit as st, yt_dlp
+import os, requests, pandas as pd, streamlit as st, yt_dlp
 
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
 st.markdown("<style>html, body { direction: rtl; text-align: right; }</style>", unsafe_allow_html=True)
@@ -6,7 +6,6 @@ st.markdown("<style>html, body { direction: rtl; text-align: right; }</style>", 
 st.title("October 7 - The last day of my life")
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "October7.csv")
-META_USER_TOKEN = "EAAORARdXiYYBSZBEyajmvOpKe6epxIba2nzINk9qQGsWUy8qYIG9Nz871ZB9mAFECEmxTVZC8UCA7WXZAkF11nLdWX0pZCUdAO8m8ZBgfVh7IseEoY8ZAdA3XYjPai0LIWJ7pZBwgELv9rdnn0GZA423ZBr2dFiwWdF05UWj1NlW9ZBoW1CSEFABMPZB3ZAqw5ZAvKtrCRZCa9xmhZCBUVOt5QmZAaw5MCjj18NQNyxuLXIF5yXUvzb8uezLvZCbYMdsQn0UtvYqZCdZCM9ORgRKVZAfUZAzGAGLQ1VAAtZC4rM"
 
 URLS = [
     # Facebook Reels
@@ -53,8 +52,10 @@ def fetch_social_data():
             plat = "פייסבוק" if "facebook" in url else ("אינסטגרם" if "instagram" in url else ("טיקטוק" if "tiktok" in url else ("X (טוויטר)" if "x.com" in url or "twitter" in url else "יוטיוב")))
             try:
                 info = ydl.extract_info(url, download=False)
+                uploader = info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע"
                 data.append({
                     "פלטפורמה": plat,
+                    "שם משתמש": uploader,
                     "תמונה": info.get("thumbnail", ""),
                     "שם סרטון": info.get("description") or info.get("title") or "ללא כותרת",
                     "קישור": url,
@@ -63,7 +64,7 @@ def fetch_social_data():
                     "תגובות": info.get("comment_count", 0) or 0
                 })
             except:
-                data.append({"פלטפורמה": plat, "תמונה": "", "שם סרטון": "שגיאה בשליפה", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0})
+                data.append({"פלטפורמה": plat, "שם משתמש": "שגיאה בשליפה", "תמונה": "", "שם סרטון": "שגיאה בשליפה", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0})
     df = pd.DataFrame(data)
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
@@ -79,7 +80,7 @@ with st.sidebar:
         with st.spinner("מרענן..."):
             df = fetch_social_data()
 
-# כרטיס סיכום עליון בלבד
+# כרטיס סיכום עליון
 c1, c2, c3 = st.columns(3)
 c1.metric("סך הכל צפיות", f"{df['צפיות'].sum():,}")
 c2.metric("סך הכל לייקים", f"{df['לייקים'].sum():,}")
@@ -87,13 +88,15 @@ c3.metric("סך הכל תגובות", f"{df['תגובות'].sum():,}")
 
 st.markdown("---")
 
-# תצוגת טבלה פשוטה, ללא עיצובים נוספים
+# תצוגת הטבלה
 st.dataframe(
-    df[["פלטפורמה", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות"]],
+    df[["פלטפורמה", "שם משתמש", "תמונה", "שם סרטון", "קישור", "צפיות", "לייקים", "תגובות"]],
     column_config={
+        "פלטפורמה": "פלטפורמה",
+        "שם משתמש": "שם משתמש",
         "תמונה": st.column_config.ImageColumn("תמונה", width="small"),
-        "שם סרטון": st.column_config.LinkColumn("שם סרטון", display_text=df["שם סרטון"], url_col="קישור"),
-        "קישור": None,  # הסתרת עמודת הקישור הנפרדת
+        "שם סרטון": st.column_config.LinkColumn("שם סרטון", url_col="קישור"),
+        "קישור": None,  # מורשה ל-Streamlit להסתיר את עמודת ה-URL המקורית
         "צפיות": st.column_config.NumberColumn("צפיות", format="%d"),
         "לייקים": st.column_config.NumberColumn("לייקים", format="%d"),
         "תגובות": st.column_config.NumberColumn("תגובות", format="%d"),
