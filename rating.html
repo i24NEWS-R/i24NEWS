@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דאשבורד רייטינג ופריימים בלייב</title>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Chart.js for smooth minute-by-minute rating curves -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- FontAwesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800&display=swap');
+  
+  body {
+    font-family: 'Heebo', system-ui, -apple-system, sans-serif;
+    background-color: #0f172a;
+    color: #f8fafc;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+
+  /* Stacked overlapping cards style ("קלפים עולים אחד על השני") */
+  .card-stack {
+    display: flex;
+    position: relative;
+    padding-bottom: 8px;
+  }
+
+  .stacked-card {
+    position: relative;
+    flex: 0 0 110px;
+    margin-right: -42px; /* Overlap effect */
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    z-index: 1;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.6);
+  }
+
+  .stacked-card:hover {
+    transform: translateY(-8px) scale(1.18);
+    z-index: 50 !important;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.8), 0 0 0 2px #38bdf8;
+  }
+
+  .box-frame {
+    width: 100%;
+    aspect-ratio: 16/9;
+    background-color: #1e293b;
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: 100% auto;
+    border-radius: 6px;
+    border: 1px solid #334155;
+  }
+
+  .box-frame.loading {
+    background-color: #334155;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Custom glassmorphism modal */
+  .modal-backdrop {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
+    <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand Title & Date -->
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
+          <i class="fa-solid fa-chart-line text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-wide text-white flex items-center gap-2">
+            מערכת ניטור רייטינג ופריימים בזמן אמת
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">LIVE</span>
+          </h1>
+          <p class="text-xs text-slate-400">מעקב דקה-אחר-דקה אחר שידורי הטלוויזיה בישראל</p>
+        </div>
+      </div>
+
+      <!-- Controls & Window Navigation -->
+      <div class="flex flex-wrap items-center gap-2 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60 text-xs">
+        
+        <!-- Date Selector -->
+        <div class="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
+          <i class="fa-regular fa-calendar text-slate-400"></i>
+          <input type="date" id="datePicker" class="bg-transparent text-slate-200 outline-none cursor-pointer">
+        </div>
+
+        <!-- Jump to Hour Dropdown -->
+        <div class="flex items-center gap-1.5 bg-slate-900 px-2 py-1.5 rounded-lg border border-slate-700">
+          <span class="text-slate-400 font-medium">התחלה:</span>
+          <select id="startHourSelect" class="bg-transparent text-blue-400 font-bold outline-none cursor-pointer">
+            <!-- Dynamically populated from 06:00 to 22:00 -->
+          </select>
+        </div>
+
+        <!-- Shift 4-Hours Prev / Next -->
+        <div class="flex items-center gap-1">
+          <button id="btnPrev4h" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-semibold transition flex items-center gap-1">
+            <i class="fa-solid fa-chevron-right text-xs"></i> 4 שעות אחורה
+          </button>
+          
+          <div id="timeRangeBadge" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 font-bold border border-blue-500/30">
+            06:00 - 10:00
+          </div>
+
+          <button id="btnNext4h" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-semibold transition flex items-center gap-1">
+            4 שעות קדימה <i class="fa-solid fa-chevron-left text-xs"></i>
+          </button>
+        </div>
+
+        <!-- Snapshot Step Interval -->
+        <div class="flex items-center gap-1 bg-slate-900 px-2 py-1.5 rounded-lg border border-slate-700">
+          <span class="text-slate-400">תדירות קלפים:</span>
+          <select id="frameInterval" class="bg-transparent text-slate-200 font-medium outline-none cursor-pointer">
+            <option value="10">כל 10 דק'</option>
+            <option value="15" selected>כל 15 דק'</option>
+            <option value="20">כל 20 דק'</option>
+            <option value="30">כל 30 דק'</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Channel Visibility Toggles -->
+      <div class="flex items-center gap-1.5 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60" id="channelToggles">
+        <!-- Rendered dynamically -->
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN DASHBOARD CONTENT -->
+  <main class="flex-1 max-w-[1920px] w-full mx-auto px-4 py-4 flex flex-col gap-6">
+
+    <!-- RATINGS CHART CONTAINER (FULL WIDTH) -->
+    <section class="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 shadow-2xl relative">
+      <div class="flex items-center justify-between mb-2 px-2">
+        <div class="flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider">גרף רייטינג דקה-אחר-דקה (אחוזים)</h2>
+        </div>
+        <div class="text-xs text-slate-400 flex items-center gap-4">
+          <span id="hoverTimeDisplay" class="font-mono text-blue-400 font-bold text-sm">הזז את העכבר על הגרף לסנכרון</span>
+          <span>חלון זמן: <strong class="text-slate-200" id="chartWindowSpanText">4 שעות</strong></span>
+        </div>
+      </div>
+
+      <!-- Chart Canvas Wrapper -->
+      <div class="w-full h-[280px] md:h-[320px] relative">
+        <canvas id="ratingsChart"></canvas>
+      </div>
+
+      <!-- Timeline Scrubber / Slider -->
+      <div class="mt-3 px-2 flex items-center gap-3">
+        <span class="text-xs font-bold text-slate-400">06:00</span>
+        <input type="range" id="timeScrubber" min="0" max="1200" step="15" value="0"
+               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        <span class="text-xs font-bold text-slate-400">02:00</span>
+      </div>
+    </section>
+
+    <!-- CHANNELS FRAME SNAPSHOTS STRIP -->
+    <section class="flex flex-col gap-4">
+      <div class="flex items-center justify-between px-2">
+        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+          <i class="fa-solid fa-film text-blue-400"></i>
+          תמונות ממוזערות של ערוצי השידור במקביל לגרף
+        </h2>
+        <span class="text-xs text-slate-400">לחץ על פריים להגדלה ומבט מפורט</span>
+      </div>
+
+      <!-- Container for Channel Frames Rows -->
+      <div id="channelsContainer" class="flex flex-col gap-3">
+        <!-- Dynamically generated rows per channel -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL FOR FULL-SIZE IMAGE PREVIEW -->
+  <div id="imageModal" class="modal-backdrop fixed inset-0 z-[1000] hidden flex-col items-center justify-center p-4 transition-opacity duration-200">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-800/50">
+        <div class="flex items-center gap-3">
+          <span id="modalChannelBadge" class="px-2.5 py-1 rounded-md text-xs font-bold text-white bg-blue-600">
+            קשת 12
+          </span>
+          <span id="modalTime" class="text-sm font-mono font-bold text-slate-200">זמן שידור: 08:30:00</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnModalOriginal" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> פתיחה בחלון חדש
+          </button>
+          <button id="btnModalClose" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-white text-xs font-bold transition">
+            ✕ סגור
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Content Image -->
+      <div class="p-4 flex items-center justify-center bg-black/60 relative">
+        <div id="modalImageDisplay" class="w-full max-w-3xl aspect-video bg-no-repeat bg-center bg-contain rounded-xl border border-slate-800 shadow-2xl"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      // Base config parameters for CloudFront URLs calculation from user reference
+      const BASE_A = 811566740000;
+      const BASE_D = new Date(2026, 8, 20, 6, 11);
+
+      // Channel Config Definitions
+      const CHANNELS = [
+        { id: 'keshet_12_hevc', name: 'קשת 12', color: '#ec4899', active: true, baseRating: 14.2, volatility: 2.5 },
+        { id: 'reshet_13_hevc', name: 'רשת 13', color: '#eab308', active: true, baseRating: 7.8, volatility: 1.8 },
+        { id: 'kan11_hevc',     name: 'כאן 11',  color: '#06b6d4', active: true, baseRating: 5.1, volatility: 1.2 },
+        { id: 'ch14_hevc',      name: 'עכשיו 14', color: '#ef4444', active: true, baseRating: 6.9, volatility: 2.1 },
+        { id: 'i24_he',         name: 'i24NEWS', color: '#3b82f6', active: true, baseRating: 2.3, volatility: 0.8 }
+      ];
+
+      // DOM Elements
+      const datePicker = document.getElementById('datePicker');
+      const startHourSelect = document.getElementById('startHourSelect');
+      const timeRangeBadge = document.getElementById('timeRangeBadge');
+      const btnPrev4h = document.getElementById('btnPrev4h');
+      const btnNext4h = document.getElementById('btnNext4h');
+      const frameIntervalSelect = document.getElementById('frameInterval');
+      const channelTogglesContainer = document.getElementById('channelToggles');
+      const channelsContainer = document.getElementById('channelsContainer');
+      const timeScrubber = document.getElementById('timeScrubber');
+      const hoverTimeDisplay = document.getElementById('hoverTimeDisplay');
+
+      // Modal Elements
+      const imageModal = document.getElementById('imageModal');
+      const modalChannelBadge = document.getElementById('modalChannelBadge');
+      const modalTime = document.getElementById('modalTime');
+      const modalImageDisplay = document.getElementById('modalImageDisplay');
+      const btnModalOriginal = document.getElementById('btnModalOriginal');
+      const btnModalClose = document.getElementById('btnModalClose');
+
+      let currentModalUrl = '';
+      let ratingsChart = null;
+      let windowStartMinutes = 360; // Default: 06:00 AM (360 minutes from 00:00)
+      const WINDOW_DURATION = 240; // 4 Hours = 240 minutes
+
+      // Set initial date picker
+      datePicker.valueAsDate = new Date();
+
+      // Populate Start Hour Select Options (from 06:00 to 22:00 in 30-min steps)
+      function initHourSelector() {
+        startHourSelect.innerHTML = '';
+        for (let m = 360; m <= 1320; m += 30) { // 06:00 to 22:00
+          const hh = String(Math.floor(m / 60) % 24).padStart(2, '0');
+          const mm = String(m % 60).padStart(2, '0');
+          const opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = `${hh}:${mm}`;
+          if (m === windowStartMinutes) opt.selected = true;
+          startHourSelect.appendChild(opt);
+        }
+      }
+
+      // Initialize Channel Toggle Buttons
+      function initChannelToggles() {
+        channelTogglesContainer.innerHTML = '';
+        CHANNELS.forEach(ch => {
+          const btn = document.createElement('button');
+          btn.className = `px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border ${
+            ch.active 
+              ? 'bg-slate-700 text-white border-slate-600 shadow-sm' 
+              : 'bg-slate-900/50 text-slate-500 border-slate-800'
+          }`;
+          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background-color: ${ch.color}"></span>${ch.name}`;
+          btn.onclick = () => {
+            ch.active = !ch.active;
+            initChannelToggles();
+            updateDashboard();
+          };
+          channelTogglesContainer.appendChild(btn);
+        });
+      }
+
+      // Generate Realistic Minute-by-Minute Mock Ratings Data
+      function generateRatingsData(startMin, duration) {
+        const labels = [];
+        const datasets = CHANNELS.filter(c => c.active).map(ch => ({
+          label: ch.name,
+          data: [],
+          borderColor: ch.color,
+          backgroundColor: ch.color + '15',
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: ch.color,
+          tension: 0.35,
+          fill: true
+        }));
+
+        for (let i = 0; i <= duration; i++) {
+          const totalMins = (startMin + i) % 1440; // wrap around 24h
+          const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
+          const mm = String(totalMins % 60).padStart(2, '0');
+          labels.push(`${hh}:${mm}`);
+
+          // Time of day multiplier (Primetime boost around 20:00-22:00)
+          const hourOfDay = totalMins / 60;
+          let primeMultiplier = 1;
+          if (hourOfDay >= 20 && hourOfDay <= 22.5) {
+            primeMultiplier = 2.2;
+          } else if (hourOfDay >= 17 && hourOfDay < 20) {
+            primeMultiplier = 1.5;
+          } else if (hourOfDay >= 0 && hourOfDay <= 6) {
+            primeMultiplier = 0.4;
+          }
+
+          datasets.forEach((ds, idx) => {
+            const ch = CHANNELS.find(c => c.name === ds.label);
+            // Sine wave + random movement for realistic rating spikes
+            const noise = (Math.sin(i / 12 + idx) * 1.5) + ((Math.random() - 0.5) * ch.volatility);
+            let rating = (ch.baseRating * primeMultiplier) + noise;
+            if (rating < 0.2) rating = 0.2;
+            ds.data.push(parseFloat(rating.toFixed(1)));
+          });
+        }
+
+        return { labels, datasets };
+      }
+
+      // Initialize & Update Chart.js
+      function renderChart(labels, datasets) {
+        const ctx = document.getElementById('ratingsChart').getContext('2d');
+
+        if (ratingsChart) {
+          ratingsChart.data.labels = labels;
+          ratingsChart.data.datasets = datasets;
+          ratingsChart.update();
+          return;
+        }
+
+        ratingsChart = new Chart(ctx, {
+          type: 'line',
+          data: { labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: {
+                display: false // Using custom top toggles
+              },
+              tooltip: {
+                backgroundColor: '#1e293b',
+                titleColor: '#94a3b8',
+                bodyColor: '#f8fafc',
+                borderColor: '#334155',
+                borderWidth: 1,
+                padding: 10,
+                boxPadding: 4,
+                usePointStyle: true,
+                callbacks: {
+                  label: (context) => ` ${context.dataset.label}: ${context.parsed.y}%`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: '#33415533' },
+                ticks: {
+                  color: '#94a3b8',
+                  maxRotation: 0,
+                  autoSkip: true,
+                  maxTicksLimit: 12,
+                  font: { family: 'Heebo', size: 11 }
+                }
+              },
+              y: {
+                grid: { color: '#33415555' },
+                ticks: {
+                  color: '#94a3b8',
+                  font: { family: 'Heebo', size: 11 },
+                  callback: (val) => val + '%'
+                },
+                min: 0
+              }
+            },
+            onHover: (event, chartElement) => {
+              if (chartElement.length > 0) {
+                const index = chartElement[0].index;
+                const timeStr = labels[index];
+                hoverTimeDisplay.textContent = `נבחר: ${timeStr}`;
+                highlightFramesAtTime(index);
+              }
+            }
+          }
+        });
+      }
+
+      // Calculate CloudFront Stream Frame Image URL
+      function getFrameUrl(channelId, dateObj) {
+        const sec = dateObj.getSeconds();
+        const minDate = new Date(dateObj.getTime() - sec * 1000);
+        const st = BASE_A + Math.floor((minDate - BASE_D) / 1000) * 1000;
+        const url = `https://d1zqtf09wb8nt5.cloudfront.net/file/streams/oil/freetv/live/${channelId}/live.livx/slides(id=136;startTime=${st})`;
+        const pos = `center ${sec * 2}%`;
+        return { url, pos };
+      }
+
+      // Render Channels Frame Snapshots Rows
+      function renderChannelFrames() {
+        channelsContainer.innerHTML = '';
+
+        const selectedDateStr = datePicker.value;
+        const [y, m, d] = selectedDateStr.split('-').map(Number);
+        const intervalStep = parseInt(frameIntervalSelect.value, 10); // in minutes
+
+        const activeChannels = CHANNELS.filter(c => c.active);
+
+        if (activeChannels.length === 0) {
+          channelsContainer.innerHTML = `
+            <div class="text-center py-10 bg-slate-800/30 rounded-xl border border-slate-800 text-slate-500">
+              לפחות ערוץ אחד חייב להיות מוצג. אנא בחר ערוץ מהסרגל העליון.
+            </div>`;
+          return;
+        }
+
+        activeChannels.forEach(ch => {
+          const rowDiv = document.createElement('div');
+          rowDiv.className = 'bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 flex flex-col md:flex-row items-start md:items-center gap-3 overflow-hidden';
+
+          // Channel Info Badge on Left/Right
+          const infoDiv = document.createElement('div');
+          infoDiv.className = 'flex items-center gap-2 min-w-[130px] shrink-0 border-b md:border-b-0 md:border-l border-slate-700/60 pb-2 md:pb-0 pl-3';
+          infoDiv.innerHTML = `
+            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${ch.color}"></span>
+            <div>
+              <div class="font-bold text-sm text-slate-200">${ch.name}</div>
+              <div class="text-[10px] text-slate-400">פריימים מתוזמנים</div>
+            </div>
+          `;
+
+          // Frame Cards Stack Container
+          const cardsStack = document.createElement('div');
+          cardsStack.className = 'card-stack flex-1 w-full overflow-x-auto py-2 px-2';
+
+          // Calculate frames across 4 hour duration
+          const totalSteps = Math.floor(WINDOW_DURATION / intervalStep);
+
+          for (let i = 0; i <= totalSteps; i++) {
+            const frameMinOffset = i * intervalStep;
+            const currentTotalMin = windowStartMinutes + frameMinOffset;
+            const frameDate = new Date(y, m - 1, d, Math.floor(currentTotalMin / 60), currentTotalMin % 60, 0);
+
+            const hh = String(frameDate.getHours()).padStart(2, '0');
+            const mm = String(frameDate.getMinutes()).padStart(2, '0');
+            const timeStr = `${hh}:${mm}`;
+
+            const { url, pos } = getFrameUrl(ch.id, frameDate);
+
+            const card = document.createElement('div');
+            card.className = 'stacked-card group';
+            card.dataset.timeIndex = frameMinOffset;
+
+            card.innerHTML = `
+              <div class="text-[10px] font-mono text-center text-slate-400 mb-1 group-hover:text-blue-400 group-hover:font-bold">${timeStr}</div>
+              <div class="box-frame shadow-md" style="background-image: url('${url}'); background-position: ${pos}" title="לחץ לצפייה"></div>
+            `;
+
+            card.onclick = () => openModal(ch.name, ch.color, timeStr + ':00', url, pos);
+            cardsStack.appendChild(card);
+          }
+
+          rowDiv.appendChild(infoDiv);
+          rowDiv.appendChild(cardsStack);
+          channelsContainer.appendChild(rowDiv);
+        });
+      }
+
+      // Synchronized Hover Highlight for Cards
+      function highlightFramesAtTime(minuteIndex) {
+        const intervalStep = parseInt(frameIntervalSelect.value, 10);
+        const cardIndex = Math.round(minuteIndex / intervalStep);
+
+        document.querySelectorAll('.stacked-card').forEach((card, idx) => {
+          card.classList.remove('ring-2', 'ring-blue-400', '-translate-y-2');
+        });
+
+        // Highlight corresponding cards in each channel row
+        const rows = channelsContainer.querySelectorAll('.card-stack');
+        rows.forEach(row => {
+          const cards = row.children;
+          if (cards[cardIndex]) {
+            cards[cardIndex].classList.add('ring-2', 'ring-blue-400', '-translate-y-2');
+          }
+        });
+      }
+
+      // Update Full Dashboard (Chart + Frames + Text Badges)
+      function updateDashboard() {
+        const startH = String(Math.floor(windowStartMinutes / 60) % 24).padStart(2, '0');
+        const startM = String(windowStartMinutes % 60).padStart(2, '0');
+        
+        const endTotalMin = windowStartMinutes + WINDOW_DURATION;
+        const endH = String(Math.floor(endTotalMin / 60) % 24).padStart(2, '0');
+        const endM = String(endTotalMin % 60).padStart(2, '0');
+
+        // Update Header Badge
+        timeRangeBadge.textContent = `${startH}:${startM} - ${endH}:${endM}`;
+        startHourSelect.value = windowStartMinutes;
+
+        // Sync Slider Position
+        timeScrubber.value = windowStartMinutes - 360; // offset from 06:00
+
+        // Render Ratings Chart
+        const { labels, datasets } = generateRatingsData(windowStartMinutes, WINDOW_DURATION);
+        renderChart(labels, datasets);
+
+        // Render Frame Snapshots
+        renderChannelFrames();
+      }
+
+      // Modal Controls
+      function openModal(channelName, color, timeStr, url, pos) {
+        currentModalUrl = url;
+        modalChannelBadge.textContent = channelName;
+        modalChannelBadge.style.backgroundColor = color;
+        modalTime.textContent = 'זמן שידור: ' + timeStr;
+        
+        modalImageDisplay.style.backgroundImage = `url("${url}")`;
+        modalImageDisplay.style.backgroundPosition = pos;
+
+        imageModal.classList.remove('hidden');
+      }
+
+      function closeModal() {
+        imageModal.classList.add('hidden');
+      }
+
+      // Event Listeners
+      btnPrev4h.onclick = () => {
+        if (windowStartMinutes - WINDOW_DURATION >= 360) {
+          windowStartMinutes -= WINDOW_DURATION;
+          updateDashboard();
+        }
+      };
+
+      btnNext4h.onclick = () => {
+        if (windowStartMinutes + WINDOW_DURATION <= 1320) { // Max start 22:00 -> 02:00
+          windowStartMinutes += WINDOW_DURATION;
+          updateDashboard();
+        }
+      };
+
+      startHourSelect.onchange = (e) => {
+        windowStartMinutes = parseInt(e.target.value, 10);
+        updateDashboard();
+      };
+
+      frameIntervalSelect.onchange = () => {
+        renderChannelFrames();
+      };
+
+      datePicker.onchange = () => {
+        updateDashboard();
+      };
+
+      timeScrubber.oninput = (e) => {
+        windowStartMinutes = 360 + parseInt(e.target.value, 10);
+        updateDashboard();
+      };
+
+      btnModalClose.onclick = closeModal;
+      btnModalOriginal.onclick = () => {
+        if (currentModalUrl) window.open(currentModalUrl, '_blank');
+      };
+      imageModal.onclick = (e) => {
+        if (e.target === imageModal) closeModal();
+      };
+      document.onkeydown = (e) => {
+        if (e.key === 'Escape') closeModal();
+      };
+
+      // Initial Kickoff
+      initHourSelector();
+      initChannelToggles();
+      updateDashboard();
+
+    })();
+  </script>
+</body>
+</html>
