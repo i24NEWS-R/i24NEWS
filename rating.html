@@ -14,50 +14,42 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;700;800&display=swap');
   
-  body {
+  html, body {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
     font-family: 'Heebo', system-ui, -apple-system, sans-serif;
     background-color: #0f172a;
     color: #f8fafc;
-    overflow-x: hidden;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: #0f172a;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #334155;
-    border-radius: 4px;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+  /* Force Left-To-Right time axis alignment while keeping Hebrew UI headers */
+  .timeline-ltr {
+    direction: ltr !important;
   }
 
   /* Stacked overlapping cards style ("קלפים עולים אחד על השני") */
   .card-stack {
     display: flex;
     position: relative;
-    padding-bottom: 8px;
+    direction: ltr;
+    align-items: center;
   }
 
   .stacked-card {
     position: relative;
-    flex: 0 0 110px;
-    margin-right: -42px; /* Overlap effect */
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex: 1 1 0px;
+    min-width: 0;
+    margin-right: -18px; /* Overlap effect */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     z-index: 1;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.6);
   }
 
   .stacked-card:hover {
-    transform: translateY(-8px) scale(1.18);
+    transform: translateY(-4px) scale(1.25);
     z-index: 50 !important;
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.8), 0 0 0 2px #38bdf8;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.9), 0 0 0 2px #38bdf8;
   }
 
   .box-frame {
@@ -67,173 +59,148 @@
     background-repeat: no-repeat;
     background-position: center top;
     background-size: 100% auto;
-    border-radius: 6px;
+    border-radius: 4px;
     border: 1px solid #334155;
-  }
-
-  .box-frame.loading {
-    background-color: #334155;
-    animation: pulse 1.5s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
   }
 
   /* Custom glassmorphism modal */
   .modal-backdrop {
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(15, 23, 42, 0.88);
     backdrop-filter: blur(8px);
+  }
+
+  /* Compact range slider styling */
+  input[type=range]::-webkit-slider-thumb {
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
   }
 </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="h-screen flex flex-col justify-between p-2 select-none">
 
-  <!-- TOP NAVIGATION HEADER -->
-  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
-    <div class="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-4">
+  <!-- HEADER CONTROL BAR -->
+  <header class="bg-slate-900/90 border border-slate-800 rounded-xl px-3 py-1.5 shadow-md flex items-center justify-between gap-2 shrink-0">
+    
+    <!-- Title & Status -->
+    <div class="flex items-center gap-2">
+      <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-md shadow-blue-500/20 text-xs">
+        <i class="fa-solid fa-chart-line"></i>
+      </div>
+      <div>
+        <h1 class="text-sm font-bold text-white flex items-center gap-2 leading-none">
+          מערכת ניטור רייטינג ופריימים
+          <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">רציף 06:00 - 02:00</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Time Window Controls & Navigation -->
+    <div class="flex items-center gap-2 bg-slate-800/80 px-2 py-1 rounded-lg border border-slate-700/60 text-xs">
       
-      <!-- Brand Title & Date -->
-      <div class="flex items-center gap-3">
-        <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
-          <i class="fa-solid fa-chart-line text-xl"></i>
-        </div>
-        <div>
-          <h1 class="text-lg font-bold tracking-wide text-white flex items-center gap-2">
-            מערכת ניטור רייטינג ופריימים בזמן אמת
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">LIVE</span>
-          </h1>
-          <p class="text-xs text-slate-400">מעקב דקה-אחר-דקה אחר שידורי הטלוויזיה בישראל</p>
-        </div>
+      <!-- Date Picker -->
+      <div class="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded border border-slate-700">
+        <i class="fa-regular fa-calendar text-slate-400 text-[11px]"></i>
+        <input type="date" id="datePicker" class="bg-transparent text-slate-200 outline-none text-xs cursor-pointer">
       </div>
 
-      <!-- Controls & Window Navigation -->
-      <div class="flex flex-wrap items-center gap-2 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60 text-xs">
-        
-        <!-- Date Selector -->
-        <div class="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-700">
-          <i class="fa-regular fa-calendar text-slate-400"></i>
-          <input type="date" id="datePicker" class="bg-transparent text-slate-200 outline-none cursor-pointer">
+      <!-- Quick Step Buttons -->
+      <div class="flex items-center gap-1">
+        <button id="btnPrevMinute" title="דקה אחורה" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold transition">
+          <i class="fa-solid fa-chevron-right text-[10px]"></i> -1 דק'
+        </button>
+        <button id="btnPrevHour" title="שעה אחורה" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold transition">
+          -1 שעה
+        </button>
+
+        <div id="timeRangeBadge" class="px-2.5 py-1 rounded bg-blue-600/20 text-blue-300 font-mono font-bold border border-blue-500/30 dir-ltr text-xs">
+          06:00 - 10:00
         </div>
 
-        <!-- Jump to Hour Dropdown -->
-        <div class="flex items-center gap-1.5 bg-slate-900 px-2 py-1.5 rounded-lg border border-slate-700">
-          <span class="text-slate-400 font-medium">התחלה:</span>
-          <select id="startHourSelect" class="bg-transparent text-blue-400 font-bold outline-none cursor-pointer">
-            <!-- Dynamically populated from 06:00 to 22:00 -->
-          </select>
-        </div>
-
-        <!-- Shift 4-Hours Prev / Next -->
-        <div class="flex items-center gap-1">
-          <button id="btnPrev4h" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-semibold transition flex items-center gap-1">
-            <i class="fa-solid fa-chevron-right text-xs"></i> 4 שעות אחורה
-          </button>
-          
-          <div id="timeRangeBadge" class="px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-300 font-bold border border-blue-500/30">
-            06:00 - 10:00
-          </div>
-
-          <button id="btnNext4h" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-semibold transition flex items-center gap-1">
-            4 שעות קדימה <i class="fa-solid fa-chevron-left text-xs"></i>
-          </button>
-        </div>
-
-        <!-- Snapshot Step Interval -->
-        <div class="flex items-center gap-1 bg-slate-900 px-2 py-1.5 rounded-lg border border-slate-700">
-          <span class="text-slate-400">תדירות קלפים:</span>
-          <select id="frameInterval" class="bg-transparent text-slate-200 font-medium outline-none cursor-pointer">
-            <option value="10">כל 10 דק'</option>
-            <option value="15" selected>כל 15 דק'</option>
-            <option value="20">כל 20 דק'</option>
-            <option value="30">כל 30 דק'</option>
-          </select>
-        </div>
-
-      </div>
-
-      <!-- Channel Visibility Toggles -->
-      <div class="flex items-center gap-1.5 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60" id="channelToggles">
-        <!-- Rendered dynamically -->
+        <button id="btnNextHour" title="שעה קדימה" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold transition">
+          +1 שעה
+        </button>
+        <button id="btnNextMinute" title="דקה קדימה" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 active:scale-95 text-white font-bold transition">
+          +1 דק' <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        </button>
       </div>
 
     </div>
+
+    <!-- Channel Toggles -->
+    <div class="flex items-center gap-1 bg-slate-800/80 p-1 rounded-lg border border-slate-700/60" id="channelToggles">
+      <!-- Rendered dynamically -->
+    </div>
+
   </header>
 
-  <!-- MAIN DASHBOARD CONTENT -->
-  <main class="flex-1 max-w-[1920px] w-full mx-auto px-4 py-4 flex flex-col gap-6">
+  <!-- MAIN SINGLE-SCREEN CONTENT AREA -->
+  <main class="flex-1 flex flex-col justify-between gap-1.5 min-h-0 py-1">
 
-    <!-- RATINGS CHART CONTAINER (FULL WIDTH) -->
-    <section class="bg-slate-800/50 rounded-2xl p-4 border border-slate-700/50 shadow-2xl relative">
-      <div class="flex items-center justify-between mb-2 px-2">
+    <!-- CONTINUOUS RATINGS CHART (4-HOUR SLIDING WINDOW) -->
+    <section class="bg-slate-800/40 rounded-xl p-2 border border-slate-700/50 shadow-lg flex flex-col shrink-0 h-[38%] min-h-[180px]">
+      <div class="flex items-center justify-between mb-1 px-1">
         <div class="flex items-center gap-2">
-          <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wider">גרף רייטינג דקה-אחר-דקה (אחוזים)</h2>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <h2 class="text-xs font-bold text-slate-300">גרף רייטינג ברצף זורם (שמאל לימין)</h2>
         </div>
-        <div class="text-xs text-slate-400 flex items-center gap-4">
-          <span id="hoverTimeDisplay" class="font-mono text-blue-400 font-bold text-sm">הזז את העכבר על הגרף לסנכרון</span>
-          <span>חלון זמן: <strong class="text-slate-200" id="chartWindowSpanText">4 שעות</strong></span>
+        <div class="text-[11px] text-slate-400 flex items-center gap-3">
+          <span id="hoverTimeDisplay" class="font-mono text-blue-400 font-bold">הזז עכבר לסנכרון</span>
+          <span>חלון מוצג: <strong class="text-slate-200">4 שעות רציפות</strong></span>
         </div>
       </div>
 
       <!-- Chart Canvas Wrapper -->
-      <div class="w-full h-[280px] md:h-[320px] relative">
+      <div class="w-full flex-1 relative timeline-ltr">
         <canvas id="ratingsChart"></canvas>
       </div>
 
-      <!-- Timeline Scrubber / Slider -->
-      <div class="mt-3 px-2 flex items-center gap-3">
-        <span class="text-xs font-bold text-slate-400">06:00</span>
-        <input type="range" id="timeScrubber" min="0" max="1200" step="15" value="0"
-               class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
-        <span class="text-xs font-bold text-slate-400">02:00</span>
+      <!-- Smooth Continuous Timeline Scrubber -->
+      <div class="mt-1 px-1 flex items-center gap-2 timeline-ltr">
+        <span class="text-[10px] font-mono font-bold text-slate-400">06:00</span>
+        <input type="range" id="timeScrubber" min="360" max="1320" step="1" value="360"
+               class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+        <span class="text-[10px] font-mono font-bold text-slate-400">02:00</span>
       </div>
     </section>
 
-    <!-- CHANNELS FRAME SNAPSHOTS STRIP -->
-    <section class="flex flex-col gap-4">
-      <div class="flex items-center justify-between px-2">
-        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-          <i class="fa-solid fa-film text-blue-400"></i>
-          תמונות ממוזערות של ערוצי השידור במקביל לגרף
-        </h2>
-        <span class="text-xs text-slate-400">לחץ על פריים להגדלה ומבט מפורט</span>
-      </div>
-
-      <!-- Container for Channel Frames Rows -->
-      <div id="channelsContainer" class="flex flex-col gap-3">
-        <!-- Dynamically generated rows per channel -->
+    <!-- SYNCHRONIZED CHANNELS FRAME STRIP (5 ROWS - NO SCROLL) -->
+    <section class="flex-1 flex flex-col justify-between gap-1 min-h-0">
+      <div id="channelsContainer" class="flex-1 flex flex-col justify-between gap-1 min-h-0">
+        <!-- Dynamically generated rows for all 5 channels -->
       </div>
     </section>
 
   </main>
 
   <!-- MODAL FOR FULL-SIZE IMAGE PREVIEW -->
-  <div id="imageModal" class="modal-backdrop fixed inset-0 z-[1000] hidden flex-col items-center justify-center p-4 transition-opacity duration-200">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden flex flex-col">
+  <div id="imageModal" class="modal-backdrop fixed inset-0 z-[1000] hidden flex-col items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col">
       
       <!-- Modal Header -->
-      <div class="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-800/50">
-        <div class="flex items-center gap-3">
-          <span id="modalChannelBadge" class="px-2.5 py-1 rounded-md text-xs font-bold text-white bg-blue-600">
+      <div class="flex items-center justify-between px-4 py-2 border-b border-slate-800 bg-slate-800/50">
+        <div class="flex items-center gap-2">
+          <span id="modalChannelBadge" class="px-2 py-0.5 rounded text-xs font-bold text-white bg-blue-600">
             קשת 12
           </span>
-          <span id="modalTime" class="text-sm font-mono font-bold text-slate-200">זמן שידור: 08:30:00</span>
+          <span id="modalTime" class="text-xs font-mono font-bold text-slate-200">זמן שידור: 08:30:00</span>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btnModalOriginal" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5">
-            <i class="fa-solid fa-arrow-up-right-from-square"></i> פתיחה בחלון חדש
+          <button id="btnModalOriginal" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> פתיחה בחלון חדש
           </button>
-          <button id="btnModalClose" class="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-rose-600 text-white text-xs font-bold transition">
+          <button id="btnModalClose" class="px-2.5 py-1 rounded bg-slate-700 hover:bg-rose-600 text-white text-xs font-bold transition">
             ✕ סגור
           </button>
         </div>
       </div>
 
       <!-- Modal Content Image -->
-      <div class="p-4 flex items-center justify-center bg-black/60 relative">
-        <div id="modalImageDisplay" class="w-full max-w-3xl aspect-video bg-no-repeat bg-center bg-contain rounded-xl border border-slate-800 shadow-2xl"></div>
+      <div class="p-3 flex items-center justify-center bg-black/70">
+        <div id="modalImageDisplay" class="w-full aspect-video bg-no-repeat bg-center bg-contain rounded-lg border border-slate-800 shadow-xl"></div>
       </div>
 
     </div>
@@ -241,30 +208,41 @@
 
   <script>
     (() => {
-      // Base config parameters for CloudFront URLs calculation from user reference
+      // Base config parameters for CloudFront URLs
       const BASE_A = 811566740000;
       const BASE_D = new Date(2026, 8, 20, 6, 11);
 
       // Channel Config Definitions
       const CHANNELS = [
-        { id: 'keshet_12_hevc', name: 'קשת 12', color: '#ec4899', active: true, baseRating: 14.2, volatility: 2.5 },
-        { id: 'reshet_13_hevc', name: 'רשת 13', color: '#eab308', active: true, baseRating: 7.8, volatility: 1.8 },
-        { id: 'kan11_hevc',     name: 'כאן 11',  color: '#06b6d4', active: true, baseRating: 5.1, volatility: 1.2 },
-        { id: 'ch14_hevc',      name: 'עכשיו 14', color: '#ef4444', active: true, baseRating: 6.9, volatility: 2.1 },
-        { id: 'i24_he',         name: 'i24NEWS', color: '#3b82f6', active: true, baseRating: 2.3, volatility: 0.8 }
+        { id: 'keshet_12_hevc', name: 'קשת 12', color: '#ec4899', active: true, baseRating: 14.2, volatility: 2.2 },
+        { id: 'reshet_13_hevc', name: 'רשת 13', color: '#eab308', active: true, baseRating: 7.8, volatility: 1.6 },
+        { id: 'kan11_hevc',     name: 'כאן 11',  color: '#06b6d4', active: true, baseRating: 5.1, volatility: 1.1 },
+        { id: 'ch14_hevc',      name: 'עכשיו 14', color: '#ef4444', active: true, baseRating: 6.9, volatility: 1.9 },
+        { id: 'i24_he',         name: 'i24NEWS', color: '#3b82f6', active: true, baseRating: 2.3, volatility: 0.7 }
       ];
+
+      // Total Full Day Dataset (06:00 AM to 02:00 AM next day = 1200 minutes)
+      const TOTAL_DAY_MINUTES = 1200; // 20 Hours total
+      const WINDOW_DURATION = 240;    // 4 Hours visible window
+      const CARDS_PER_ROW = 16;       // 16 Overlapping cards mapped across 4 hours (every 15 mins)
+
+      let fullDayRatingsData = {};
+      let windowStartMinutes = 360;   // Starts at 06:00 AM (360 mins)
+      let ratingsChart = null;
 
       // DOM Elements
       const datePicker = document.getElementById('datePicker');
-      const startHourSelect = document.getElementById('startHourSelect');
       const timeRangeBadge = document.getElementById('timeRangeBadge');
-      const btnPrev4h = document.getElementById('btnPrev4h');
-      const btnNext4h = document.getElementById('btnNext4h');
-      const frameIntervalSelect = document.getElementById('frameInterval');
-      const channelTogglesContainer = document.getElementById('channelToggles');
-      const channelsContainer = document.getElementById('channelsContainer');
       const timeScrubber = document.getElementById('timeScrubber');
       const hoverTimeDisplay = document.getElementById('hoverTimeDisplay');
+      const channelTogglesContainer = document.getElementById('channelToggles');
+      const channelsContainer = document.getElementById('channelsContainer');
+
+      // Buttons
+      const btnPrevMinute = document.getElementById('btnPrevMinute');
+      const btnPrevHour = document.getElementById('btnPrevHour');
+      const btnNextHour = document.getElementById('btnNextHour');
+      const btnNextMinute = document.getElementById('btnNextMinute');
 
       // Modal Elements
       const imageModal = document.getElementById('imageModal');
@@ -275,38 +253,53 @@
       const btnModalClose = document.getElementById('btnModalClose');
 
       let currentModalUrl = '';
-      let ratingsChart = null;
-      let windowStartMinutes = 360; // Default: 06:00 AM (360 minutes from 00:00)
-      const WINDOW_DURATION = 240; // 4 Hours = 240 minutes
 
-      // Set initial date picker
+      // Initialize Date
       datePicker.valueAsDate = new Date();
 
-      // Populate Start Hour Select Options (from 06:00 to 22:00 in 30-min steps)
-      function initHourSelector() {
-        startHourSelect.innerHTML = '';
-        for (let m = 360; m <= 1320; m += 30) { // 06:00 to 22:00
-          const hh = String(Math.floor(m / 60) % 24).padStart(2, '0');
-          const mm = String(m % 60).padStart(2, '0');
-          const opt = document.createElement('option');
-          opt.value = m;
-          opt.textContent = `${hh}:${mm}`;
-          if (m === windowStartMinutes) opt.selected = true;
-          startHourSelect.appendChild(opt);
-        }
+      // Pre-generate Full Continuous Day Minute-by-Minute Data (06:00 to 02:00)
+      function generateFullDayRatings() {
+        fullDayRatingsData = {};
+        CHANNELS.forEach((ch, idx) => {
+          const points = [];
+          for (let m = 0; m <= TOTAL_DAY_MINUTES; m++) {
+            const absMin = (360 + m) % 1440;
+            const hourOfDay = absMin / 60;
+            
+            // Prime time curve effect
+            let multiplier = 1;
+            if (hourOfDay >= 20 && hourOfDay <= 22.5) multiplier = 2.1;
+            else if (hourOfDay >= 17 && hourOfDay < 20) multiplier = 1.4;
+            else if (hourOfDay >= 0 && hourOfDay <= 6) multiplier = 0.4;
+
+            const noise = (Math.sin(m / 15 + idx) * 1.8) + ((Math.random() - 0.5) * ch.volatility);
+            let rating = (ch.baseRating * multiplier) + noise;
+            if (rating < 0.2) rating = 0.2;
+            points.push(parseFloat(rating.toFixed(1)));
+          }
+          fullDayRatingsData[ch.id] = points;
+        });
       }
 
-      // Initialize Channel Toggle Buttons
+      // Format Minutes to HH:MM String
+      function formatTimeStr(totalMinutes) {
+        const normalized = (totalMinutes % 1440 + 1440) % 1440;
+        const hh = String(Math.floor(normalized / 60)).padStart(2, '0');
+        const mm = String(normalized % 60).padStart(2, '0');
+        return `${hh}:${mm}`;
+      }
+
+      // Channel Toggles Render
       function initChannelToggles() {
         channelTogglesContainer.innerHTML = '';
         CHANNELS.forEach(ch => {
           const btn = document.createElement('button');
-          btn.className = `px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border ${
+          btn.className = `px-2 py-0.5 rounded text-[11px] font-bold transition flex items-center gap-1 border ${
             ch.active 
               ? 'bg-slate-700 text-white border-slate-600 shadow-sm' 
               : 'bg-slate-900/50 text-slate-500 border-slate-800'
           }`;
-          btn.innerHTML = `<span class="w-2.5 h-2.5 rounded-full" style="background-color: ${ch.color}"></span>${ch.name}`;
+          btn.innerHTML = `<span class="w-2 h-2 rounded-full" style="background-color: ${ch.color}"></span>${ch.name}`;
           btn.onclick = () => {
             ch.active = !ch.active;
             initChannelToggles();
@@ -316,60 +309,40 @@
         });
       }
 
-      // Generate Realistic Minute-by-Minute Mock Ratings Data
-      function generateRatingsData(startMin, duration) {
+      // Render Continuous Chart (Left to Right Time Axis)
+      function renderChart() {
         const labels = [];
-        const datasets = CHANNELS.filter(c => c.active).map(ch => ({
-          label: ch.name,
-          data: [],
-          borderColor: ch.color,
-          backgroundColor: ch.color + '15',
-          borderWidth: 2,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: ch.color,
-          tension: 0.35,
-          fill: true
-        }));
+        const datasets = [];
 
-        for (let i = 0; i <= duration; i++) {
-          const totalMins = (startMin + i) % 1440; // wrap around 24h
-          const hh = String(Math.floor(totalMins / 60)).padStart(2, '0');
-          const mm = String(totalMins % 60).padStart(2, '0');
-          labels.push(`${hh}:${mm}`);
-
-          // Time of day multiplier (Primetime boost around 20:00-22:00)
-          const hourOfDay = totalMins / 60;
-          let primeMultiplier = 1;
-          if (hourOfDay >= 20 && hourOfDay <= 22.5) {
-            primeMultiplier = 2.2;
-          } else if (hourOfDay >= 17 && hourOfDay < 20) {
-            primeMultiplier = 1.5;
-          } else if (hourOfDay >= 0 && hourOfDay <= 6) {
-            primeMultiplier = 0.4;
-          }
-
-          datasets.forEach((ds, idx) => {
-            const ch = CHANNELS.find(c => c.name === ds.label);
-            // Sine wave + random movement for realistic rating spikes
-            const noise = (Math.sin(i / 12 + idx) * 1.5) + ((Math.random() - 0.5) * ch.volatility);
-            let rating = (ch.baseRating * primeMultiplier) + noise;
-            if (rating < 0.2) rating = 0.2;
-            ds.data.push(parseFloat(rating.toFixed(1)));
-          });
+        // Build 4-hour sliced labels (LTR: Earlier -> Later)
+        for (let i = 0; i <= WINDOW_DURATION; i++) {
+          labels.push(formatTimeStr(windowStartMinutes + i));
         }
 
-        return { labels, datasets };
-      }
+        // Slice active datasets
+        const startOffset = windowStartMinutes - 360;
+        CHANNELS.filter(c => c.active).forEach(ch => {
+          const slicedData = fullDayRatingsData[ch.id].slice(startOffset, startOffset + WINDOW_DURATION + 1);
+          datasets.push({
+            label: ch.name,
+            data: slicedData,
+            borderColor: ch.color,
+            backgroundColor: ch.color + '12',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHoverBackgroundColor: ch.color,
+            tension: 0.35,
+            fill: true
+          });
+        });
 
-      // Initialize & Update Chart.js
-      function renderChart(labels, datasets) {
         const ctx = document.getElementById('ratingsChart').getContext('2d');
 
         if (ratingsChart) {
           ratingsChart.data.labels = labels;
           ratingsChart.data.datasets = datasets;
-          ratingsChart.update();
+          ratingsChart.update('none'); // Fast update without animations for continuous drag
           return;
         }
 
@@ -379,23 +352,20 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: false,
             interaction: {
               mode: 'index',
               intersect: false,
             },
             plugins: {
-              legend: {
-                display: false // Using custom top toggles
-              },
+              legend: { display: false },
               tooltip: {
                 backgroundColor: '#1e293b',
                 titleColor: '#94a3b8',
                 bodyColor: '#f8fafc',
                 borderColor: '#334155',
                 borderWidth: 1,
-                padding: 10,
-                boxPadding: 4,
-                usePointStyle: true,
+                padding: 6,
                 callbacks: {
                   label: (context) => ` ${context.dataset.label}: ${context.parsed.y}%`
                 }
@@ -403,20 +373,20 @@
             },
             scales: {
               x: {
-                grid: { color: '#33415533' },
+                grid: { color: '#33415522' },
                 ticks: {
                   color: '#94a3b8',
                   maxRotation: 0,
                   autoSkip: true,
                   maxTicksLimit: 12,
-                  font: { family: 'Heebo', size: 11 }
+                  font: { family: 'Heebo', size: 10 }
                 }
               },
               y: {
-                grid: { color: '#33415555' },
+                grid: { color: '#33415544' },
                 ticks: {
                   color: '#94a3b8',
-                  font: { family: 'Heebo', size: 11 },
+                  font: { family: 'Heebo', size: 10 },
                   callback: (val) => val + '%'
                 },
                 min: 0
@@ -444,64 +414,56 @@
         return { url, pos };
       }
 
-      // Render Channels Frame Snapshots Rows
+      // Render Synchronized Channel Rows (LTR Timeline)
       function renderChannelFrames() {
         channelsContainer.innerHTML = '';
 
         const selectedDateStr = datePicker.value;
         const [y, m, d] = selectedDateStr.split('-').map(Number);
-        const intervalStep = parseInt(frameIntervalSelect.value, 10); // in minutes
-
         const activeChannels = CHANNELS.filter(c => c.active);
 
         if (activeChannels.length === 0) {
           channelsContainer.innerHTML = `
-            <div class="text-center py-10 bg-slate-800/30 rounded-xl border border-slate-800 text-slate-500">
-              לפחות ערוץ אחד חייב להיות מוצג. אנא בחר ערוץ מהסרגל העליון.
+            <div class="h-full flex items-center justify-center bg-slate-800/30 rounded-lg text-slate-500 text-xs">
+              בחר לפחות ערוץ אחד להצגה.
             </div>`;
           return;
         }
 
+        const stepMinutes = WINDOW_DURATION / CARDS_PER_ROW; // ~15 min step
+
         activeChannels.forEach(ch => {
           const rowDiv = document.createElement('div');
-          rowDiv.className = 'bg-slate-800/40 border border-slate-700/60 rounded-xl p-3 flex flex-col md:flex-row items-start md:items-center gap-3 overflow-hidden';
+          rowDiv.className = 'bg-slate-800/40 border border-slate-700/50 rounded-lg p-1 flex items-center gap-2 overflow-hidden flex-1 min-h-0';
 
-          // Channel Info Badge on Left/Right
+          // Channel Label
           const infoDiv = document.createElement('div');
-          infoDiv.className = 'flex items-center gap-2 min-w-[130px] shrink-0 border-b md:border-b-0 md:border-l border-slate-700/60 pb-2 md:pb-0 pl-3';
+          infoDiv.className = 'flex items-center gap-1.5 min-w-[90px] shrink-0 border-l border-slate-700/60 pl-2 text-right';
           infoDiv.innerHTML = `
-            <span class="w-3 h-3 rounded-full shrink-0" style="background-color: ${ch.color}"></span>
-            <div>
-              <div class="font-bold text-sm text-slate-200">${ch.name}</div>
-              <div class="text-[10px] text-slate-400">פריימים מתוזמנים</div>
-            </div>
+            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${ch.color}"></span>
+            <span class="font-bold text-xs text-slate-200 truncate">${ch.name}</span>
           `;
 
-          // Frame Cards Stack Container
+          // Card Stack (Left to Right Timeline)
           const cardsStack = document.createElement('div');
-          cardsStack.className = 'card-stack flex-1 w-full overflow-x-auto py-2 px-2';
+          cardsStack.className = 'card-stack flex-1 w-full overflow-hidden h-full';
 
-          // Calculate frames across 4 hour duration
-          const totalSteps = Math.floor(WINDOW_DURATION / intervalStep);
-
-          for (let i = 0; i <= totalSteps; i++) {
-            const frameMinOffset = i * intervalStep;
+          for (let i = 0; i <= CARDS_PER_ROW; i++) {
+            const frameMinOffset = Math.round(i * stepMinutes);
             const currentTotalMin = windowStartMinutes + frameMinOffset;
+            
             const frameDate = new Date(y, m - 1, d, Math.floor(currentTotalMin / 60), currentTotalMin % 60, 0);
-
-            const hh = String(frameDate.getHours()).padStart(2, '0');
-            const mm = String(frameDate.getMinutes()).padStart(2, '0');
-            const timeStr = `${hh}:${mm}`;
+            const timeStr = formatTimeStr(currentTotalMin);
 
             const { url, pos } = getFrameUrl(ch.id, frameDate);
 
             const card = document.createElement('div');
             card.className = 'stacked-card group';
-            card.dataset.timeIndex = frameMinOffset;
+            card.dataset.timeOffset = frameMinOffset;
 
             card.innerHTML = `
-              <div class="text-[10px] font-mono text-center text-slate-400 mb-1 group-hover:text-blue-400 group-hover:font-bold">${timeStr}</div>
-              <div class="box-frame shadow-md" style="background-image: url('${url}'); background-position: ${pos}" title="לחץ לצפייה"></div>
+              <div class="text-[9px] font-mono text-center text-slate-400 mb-0.5 group-hover:text-blue-400 font-semibold dir-ltr">${timeStr}</div>
+              <div class="box-frame shadow" style="background-image: url('${url}'); background-position: ${pos}" title="לחץ להגדלה"></div>
             `;
 
             card.onclick = () => openModal(ch.name, ch.color, timeStr + ':00', url, pos);
@@ -514,50 +476,37 @@
         });
       }
 
-      // Synchronized Hover Highlight for Cards
+      // Highlight corresponding frame cards on chart hover
       function highlightFramesAtTime(minuteIndex) {
-        const intervalStep = parseInt(frameIntervalSelect.value, 10);
-        const cardIndex = Math.round(minuteIndex / intervalStep);
+        const stepMinutes = WINDOW_DURATION / CARDS_PER_ROW;
+        const cardIndex = Math.round(minuteIndex / stepMinutes);
 
-        document.querySelectorAll('.stacked-card').forEach((card, idx) => {
-          card.classList.remove('ring-2', 'ring-blue-400', '-translate-y-2');
+        document.querySelectorAll('.stacked-card').forEach(card => {
+          card.classList.remove('ring-2', 'ring-blue-400', '-translate-y-1');
         });
 
-        // Highlight corresponding cards in each channel row
         const rows = channelsContainer.querySelectorAll('.card-stack');
         rows.forEach(row => {
           const cards = row.children;
           if (cards[cardIndex]) {
-            cards[cardIndex].classList.add('ring-2', 'ring-blue-400', '-translate-y-2');
+            cards[cardIndex].classList.add('ring-2', 'ring-blue-400', '-translate-y-1');
           }
         });
       }
 
-      // Update Full Dashboard (Chart + Frames + Text Badges)
+      // Main Dashboard Update
       function updateDashboard() {
-        const startH = String(Math.floor(windowStartMinutes / 60) % 24).padStart(2, '0');
-        const startM = String(windowStartMinutes % 60).padStart(2, '0');
-        
-        const endTotalMin = windowStartMinutes + WINDOW_DURATION;
-        const endH = String(Math.floor(endTotalMin / 60) % 24).padStart(2, '0');
-        const endM = String(endTotalMin % 60).padStart(2, '0');
+        const startStr = formatTimeStr(windowStartMinutes);
+        const endStr = formatTimeStr(windowStartMinutes + WINDOW_DURATION);
 
-        // Update Header Badge
-        timeRangeBadge.textContent = `${startH}:${startM} - ${endH}:${endM}`;
-        startHourSelect.value = windowStartMinutes;
+        timeRangeBadge.textContent = `${startStr} - ${endStr}`;
+        timeScrubber.value = windowStartMinutes;
 
-        // Sync Slider Position
-        timeScrubber.value = windowStartMinutes - 360; // offset from 06:00
-
-        // Render Ratings Chart
-        const { labels, datasets } = generateRatingsData(windowStartMinutes, WINDOW_DURATION);
-        renderChart(labels, datasets);
-
-        // Render Frame Snapshots
+        renderChart();
         renderChannelFrames();
       }
 
-      // Modal Controls
+      // Modal Functions
       function openModal(channelName, color, timeStr, url, pos) {
         currentModalUrl = url;
         modalChannelBadge.textContent = channelName;
@@ -568,44 +517,53 @@
         modalImageDisplay.style.backgroundPosition = pos;
 
         imageModal.classList.remove('hidden');
+        imageModal.classList.add('flex');
       }
 
       function closeModal() {
         imageModal.classList.add('hidden');
+        imageModal.classList.remove('flex');
       }
 
-      // Event Listeners
-      btnPrev4h.onclick = () => {
-        if (windowStartMinutes - WINDOW_DURATION >= 360) {
-          windowStartMinutes -= WINDOW_DURATION;
+      // Event Listeners for Continuous Minute-by-Minute Movements
+      btnPrevMinute.onclick = () => {
+        if (windowStartMinutes > 360) {
+          windowStartMinutes -= 1;
           updateDashboard();
         }
       };
 
-      btnNext4h.onclick = () => {
-        if (windowStartMinutes + WINDOW_DURATION <= 1320) { // Max start 22:00 -> 02:00
-          windowStartMinutes += WINDOW_DURATION;
+      btnNextMinute.onclick = () => {
+        if (windowStartMinutes < 1320) {
+          windowStartMinutes += 1;
           updateDashboard();
         }
       };
 
-      startHourSelect.onchange = (e) => {
-        windowStartMinutes = parseInt(e.target.value, 10);
+      btnPrevHour.onclick = () => {
+        if (windowStartMinutes - 60 >= 360) {
+          windowStartMinutes -= 60;
+        } else {
+          windowStartMinutes = 360;
+        }
         updateDashboard();
       };
 
-      frameIntervalSelect.onchange = () => {
-        renderChannelFrames();
-      };
-
-      datePicker.onchange = () => {
+      btnNextHour.onclick = () => {
+        if (windowStartMinutes + 60 <= 1320) {
+          windowStartMinutes += 60;
+        } else {
+          windowStartMinutes = 1320;
+        }
         updateDashboard();
       };
 
       timeScrubber.oninput = (e) => {
-        windowStartMinutes = 360 + parseInt(e.target.value, 10);
+        windowStartMinutes = parseInt(e.target.value, 10);
         updateDashboard();
       };
+
+      datePicker.onchange = () => updateDashboard();
 
       btnModalClose.onclick = closeModal;
       btnModalOriginal.onclick = () => {
@@ -616,10 +574,12 @@
       };
       document.onkeydown = (e) => {
         if (e.key === 'Escape') closeModal();
+        if (e.key === 'ArrowRight') btnPrevMinute.click();
+        if (e.key === 'ArrowLeft') btnNextMinute.click();
       };
 
-      // Initial Kickoff
-      initHourSelector();
+      // Initialization
+      generateFullDayRatings();
       initChannelToggles();
       updateDashboard();
 
