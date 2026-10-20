@@ -1,7 +1,7 @@
 import os
 import re
-import requests
 import pandas as pd
+import requests
 import streamlit as st
 import yt_dlp
 
@@ -88,7 +88,9 @@ st.markdown(
 CACHE_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "October7.csv"
 )
-META_USER_TOKEN = "EAAORARdXiYYBSZCQtq2gFJyH1yoI98dYzDvYotAaKZBG9wBOTa6Iyzry11W0QKZC4ipnbdzZATPeqMKZCdz9yn89gKZCEEyFBcBiDPY5H2nNbca37xxtsZC4aWI79OpIiCCkbGEyp8NvTnMdjQpKiTuLtbqDuEUInAsZC7w5kMdRfPS7wnt3fQYY2j8UfK28abrndSzRorhQjZCG9De2wrDV72RGcTYwPFYTL1mNSFmaX3G90CdZCkkJ7Sxf4ZD"
+
+# שליפת הטוקן בצורה מאובטחת ממערכת הסודות
+META_USER_TOKEN = st.secrets["META_USER_TOKEN"]
 
 URLS = [
     # Facebook Reels
@@ -225,9 +227,10 @@ def fetch_instagram_data():
     for page in res.get("data", []):
       ig_acc = page.get("instagram_business_account")
       if ig_acc:
-        ig_accounts.append(
-            {"id": ig_acc.get("id"), "username": ig_acc.get("username", "i24NEWS")}
-        )
+        ig_accounts.append({
+            "id": ig_acc.get("id"),
+            "username": ig_acc.get("username", "i24NEWS"),
+        })
   except Exception:
     pass
 
@@ -239,9 +242,9 @@ def fetch_instagram_data():
     next_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
 
     page_count = 0
-    max_pages = 5  # מגבלה של עד 5 עמודים
+    max_pages = 5
     posts_scanned = 0
-    max_posts = 500  # או עד 500 סרטונים
+    max_posts = 500
 
     while next_url and page_count < max_pages and posts_scanned < max_posts:
       try:
