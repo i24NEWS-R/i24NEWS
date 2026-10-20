@@ -88,8 +88,6 @@ st.markdown(
 CACHE_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "October7.csv"
 )
-
-# שליפת הטוקן בצורה מאובטחת ממערכת הסודות
 META_USER_TOKEN = st.secrets["META_USER_TOKEN"]
 
 URLS = [
@@ -328,7 +326,7 @@ def fetch_ytdlp_data():
         elif "youtube.com" in url or "youtu.be" in url:
           plat = "יוטיוב"
         else:
-          plat = "אחר"
+          plat = "platform"
 
         try:
           info = ydl.extract_info(url, download=False)
@@ -373,125 +371,165 @@ def fetch_ytdlp_data():
   return other_data
 
 
-def fetch_all_social_data():
-  df = pd.DataFrame(
-      fetch_facebook_data() + fetch_instagram_data() + fetch_ytdlp_data()
-  )
-  df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
-  return df
-
-
-if os.path.exists(CACHE_FILE):
-  df = pd.read_csv(CACHE_FILE)
-  if "שיתופים" not in df.columns or "שם משתמש" not in df.columns:
-    with st.spinner("מעדכן מבנה נתונים..."):
-      df = fetch_all_social_data()
-else:
-  with st.spinner("טוען נתונים ראשוני..."):
-    df = fetch_all_social_data()
-
+# הגדרת סרגל צד לניהול רענון
 with st.sidebar:
   st.markdown("### 🔄 ניהול ורענון נתונים")
-
   if st.button("רענן את כל הפלטפורמות"):
-    with st.spinner("מרענן את כל הנתונים מול כל הרשתות..."):
-      df = fetch_all_social_data()
-      st.rerun()
+    if os.path.exists(CACHE_FILE):
+      os.remove(CACHE_FILE)
+    st.rerun()
 
-  st.markdown("---")
+# יצירת מקומות שמורים (Placeholders) דינמיים למדדים ולטבלה
+metrics_placeholder = st.empty()
+table_placeholder = st.empty()
 
-  if st.button("🔄 רענן פייסבוק בלבד"):
-    with st.spinner("מרענן נתוני פייסבוק..."):
-      fb_new = pd.DataFrame(fetch_facebook_data())
-      df = df[df["פלטפורמה"] != "פייסבוק"]
-      df = pd.concat([df, fb_new], ignore_index=True)
-      df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
-      st.rerun()
 
-  if st.button("🔄 רענן אינסטגרם בלבד"):
-    with st.spinner("מרענן נתוני אינסטגרם..."):
-      ig_new = pd.DataFrame(fetch_instagram_data())
-      df = df[df["פלטפורמה"] != "אינסטגרם"]
-      df = pd.concat([df, ig_new], ignore_index=True)
-      df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
-      st.rerun()
+def render_dashboard(df):
+  # עידכון כרטיסי המדדים
+  c1, c2, c3, c4 = metrics_placeholder.columns(4)
+  with c1:
+    st.markdown(
+        f"""
+            <div class="metric-card">
+                <div class="metric-title">סך הכל צפיות</div>
+                <div class="metric-value">{int(df['צפיות'].sum()):,}</div>
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+  with c2:
+    st.markdown(
+        f"""
+            <div class="metric-card">
+                <div class="metric-title">סך הכל לייקים</div>
+                <div class="metric-value">{int(df['לייקים'].sum()):,}</div>
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+  with c3:
+    st.markdown(
+        f"""
+            <div class="metric-card">
+                <div class="metric-title">סך הכל תגובות</div>
+                <div class="metric-value">{int(df['תגובות'].sum()):,}</div>
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
+  with c4:
+    st.markdown(
+        f"""
+            <div class="metric-card">
+                <div class="metric-title">סך הכל שיתופים</div>
+                <div class="metric-value">{int(df['שיתופים'].sum()):,}</div>
+            </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-  if st.button("🔄 רענן טיקטוק / X / יוטיוב"):
-    with st.spinner("מרענן נתוני רשתות נוספות..."):
-      other_new = pd.DataFrame(fetch_ytdlp_data())
-      df = df[df["פלטפורמה"].isin(["פייסבוק", "אינסטגרם"])]
-      df = pd.concat([df, other_new], ignore_index=True)
-      df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
-      st.rerun()
+  # בניית הטבלה
+  t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
+  for _, row in df.iterrows():
+    plat = row["פלטפורמה"]
+    user = row["שם משתמש"]
+    thumb = row["תמונה"]
+    thumb_tag = (
+        f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit:'
+        ' cover; border-radius: 4px;" />'
+        if pd.notna(thumb) and str(thumb).startswith("http")
+        else ""
+    )
+    title = row["שם סרטון"]
+    link = row["קישור"]
+    views = f"{int(row['צפיות']):,}"
+    likes = f"{int(row['לייקים']):,}"
+    comments = f"{int(row['תגובות']):,}"
+    shares = f"{int(row['שיתופים']):,}"
 
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-  st.markdown(
-      f"""
-        <div class="metric-card">
-            <div class="metric-title">סך הכל צפיות</div>
-            <div class="metric-value">{int(df['צפיות'].sum()):,}</div>
-        </div>
-    """,
-      unsafe_allow_html=True,
-  )
-with col2:
-  st.markdown(
-      f"""
-        <div class="metric-card">
-            <div class="metric-title">סך הכל לייקים</div>
-            <div class="metric-value">{int(df['לייקים'].sum()):,}</div>
-        </div>
-    """,
-      unsafe_allow_html=True,
-  )
-with col3:
-  st.markdown(
-      f"""
-        <div class="metric-card">
-            <div class="metric-title">סך הכל תגובות</div>
-            <div class="metric-value">{int(df['תגובות'].sum()):,}</div>
-        </div>
-    """,
-      unsafe_allow_html=True,
-  )
-with col4:
-  st.markdown(
-      f"""
-        <div class="metric-card">
-            <div class="metric-title">סך הכל שיתופים</div>
-            <div class="metric-value">{int(df['שיתופים'].sum()):,}</div>
-        </div>
-    """,
-      unsafe_allow_html=True,
-  )
+    # הוספת סימון ויזואלי (אנימציית טעינה/שורה בהמתנה) אם הנתונים טרם נטענו
+    is_loading = (
+        user == "שגיאה בשליפה"
+        or user == "שגיאה בשליפת API"
+        or title == "טוען נתונים..."
+    )
+    row_style = (
+        ' style="background-color: #fef3c7; animation: pulse 1.5s infinite;"'
+        if is_loading
+        else ""
+    )
 
-st.markdown("<br>", unsafe_allow_html=True)
+    t_html += (
+        f"<tr{row_style}><td>{plat}</td><td>{user}</td><td>{thumb_tag}</td><td><a"
+        f' href="{link}" target="_blank" class="video-link">{title}</a></td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>'
+    )
+  t_html += "</tbody></table>"
+  table_placeholder.markdown(t_html, unsafe_allow_html=True)
 
-table_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
 
-for _, row in df.iterrows():
-  plat = row["פלטפורמה"]
-  user = row["שם משתמש"]
-  thumb = row["תמונה"]
-  thumb_tag = (
-      f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit:'
-      ' cover; border-radius: 4px;" />'
-      if pd.notna(thumb) and str(thumb).startswith("http")
-      else ""
-  )
-  title = row["שם סרטון"]
-  link = row["קישור"]
-  views = f"{int(row['צפיות']):,}"
-  likes = f"{int(row['לייקים']):,}"
-  comments = f"{int(row['תגובות']):,}"
-  shares = f"{int(row['שיתופים']):,}"
+# --- לוגיקת טעינה הדרגתית (Progressive Loading) ---
+all_rows = []
 
-  table_html += (
-      f"<tr><td>{plat}</td><td>{user}</td><td>{thumb_tag}</td><td><a"
-      f' href="{link}" target="_blank" class="video-link">{title}</a></td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>'
-  )
+# שלב א': יצירת שלד ראשוני לכל הלינקים (כדי שהטבלה תופיע מיד עם אנימציית טעינה)
+for url in URLS:
+  if "facebook.com" in url or "fb.watch" in url:
+    plat = "פייסבוק"
+  elif "instagram.com" in url:
+    plat = "אינסטגרם"
+  elif "tiktok.com" in url:
+    plat = "טיקטוק"
+  elif "x.com" in url or "twitter.com" in url:
+    plat = "X (טוויטר)"
+  else:
+    plat = "יוטיוב"
 
-table_html += "</tbody></table>"
+  all_rows.append({
+      "פלטפורמה": plat,
+      "שם משתמש": "טוען...",
+      "תמונה": "",
+      "שם סרטון": "טוען נתונים...",
+      "קישור": url,
+      "צפיות": 0,
+      "לייקים": 0,
+      "תגובות": 0,
+      "שיתופים": 0,
+  })
 
-st.markdown(table_html, unsafe_allow_html=True)
+current_df = pd.DataFrame(all_rows)
+render_dashboard(current_df)
+
+# שלב ב': שליפת יוטיוב, טיקטוק ו-X (yt-dlp) - הכי מהר
+with st.spinner("שולף נתונים מ-YouTube, TikTok ו-X..."):
+  ytdlp_res = fetch_ytdlp_data()
+  for item in ytdlp_res:
+    for idx, row in enumerate(all_rows):
+      if row["קישור"] == item["קישור"]:
+        all_rows[idx] = item
+
+current_df = pd.DataFrame(all_rows)
+render_dashboard(current_df)  # עדכון מיידי של המסך!
+
+# שלב ג': שליפת פייסבוק
+with st.spinner("שולף נתונים מפייסבוק..."):
+  fb_res = fetch_facebook_data()
+  for item in fb_res:
+    for idx, row in enumerate(all_rows):
+      if row["קישור"] == item["קישור"]:
+        all_rows[idx] = item
+
+current_df = pd.DataFrame(all_rows)
+render_dashboard(current_df)  # עדכון מיידי נוסף של המסך!
+
+# שלב ד': שליפת אינסטגרם (שלוקח הכי הרבה זמן)
+with st.spinner("שולף נתונים מאינסטגרם (עשוי לקחת מספר שניות)..."):
+  ig_res = fetch_instagram_data()
+  for item in ig_res:
+    for idx, row in enumerate(all_rows):
+      if row["קישור"] == item["קישור"]:
+        all_rows[idx] = item
+
+current_df = pd.DataFrame(all_rows)
+render_dashboard(current_df)  # סיום טעינה מלאה!
+
+# שמירה בקובץ מטמון בסיום התהליך
+current_df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
