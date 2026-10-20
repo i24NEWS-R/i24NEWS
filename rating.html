@@ -10,16 +10,24 @@
   
   .main-layout { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
 
-  /* 2/3 Chart Area */
+  /* Top 2/3 - Chart Area */
   .chart-area {
     height: 66vh;
     width: 100vw;
     position: relative;
-    padding: 10px 10px 0 10px;
+    padding: 10px 15px 0 15px;
     background: linear-gradient(180deg, #0b0f19 0%, #111827 100%);
   }
 
-  /* 1/3 Frames Area */
+  .chart-wrapper {
+    position: absolute;
+    left: 85px; /* Matches badges width + padding */
+    right: 15px;
+    top: 10px;
+    bottom: 22px;
+  }
+
+  /* Bottom 1/3 - Frames Area */
   .frames-area {
     height: 34vh;
     width: 100vw;
@@ -28,7 +36,7 @@
     display: flex;
     flex-direction: column;
     justify-content: space-evenly;
-    padding: 4px 10px;
+    padding: 4px 15px;
   }
 
   .channel-row {
@@ -40,25 +48,24 @@
     transition: filter 0.2s ease, opacity 0.2s ease;
   }
 
-  /* Disabled State for Toggle */
   .channel-row.disabled {
     filter: grayscale(1);
     opacity: 0.35;
   }
 
-  /* Badge container width aligned exactly with Y-Axis padding (55px) */
+  /* Badges Column on Left */
   .badge-container {
-    width: 55px;
-    min-width: 55px;
+    width: 70px;
+    min-width: 70px;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     z-index: 10;
   }
 
   .channel-badge {
-    width: 100%;
-    font-size: 10px;
+    width: 65px;
+    font-size: 11px;
     font-weight: 700;
     padding: 3px 0;
     border-radius: 4px;
@@ -73,20 +80,20 @@
     transform: scale(1.05);
   }
 
-  .frames-strip {
+  /* Frames Strip perfectly aligned with Chart Plot Area */
+  .strip-wrapper {
     flex: 1;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    direction: ltr; /* Left-to-Right time sequence */
     position: relative;
+    height: 100%;
+    direction: ltr; /* Left to right time flow */
+    margin-left: 15px;
     overflow: hidden;
-    margin-right: 10px; /* Aligns right bound with Chart right padding */
   }
 
   .frame-card {
     position: absolute;
     height: 92%;
+    top: 4%;
     aspect-ratio: 16/9;
     background-color: #1e293b;
     background-size: 100% auto;
@@ -110,9 +117,9 @@
   .time-scrubber {
     position: absolute;
     bottom: 2px;
-    left: 65px;
-    right: 20px;
-    height: 14px;
+    left: 85px;
+    right: 15px;
+    height: 16px;
     z-index: 20;
     cursor: grab;
     display: flex;
@@ -187,7 +194,9 @@
 <div class="main-layout">
   <!-- Top 2/3 - Chart Area -->
   <div class="chart-area" id="chartContainer">
-    <canvas id="ratingsChart"></canvas>
+    <div class="chart-wrapper">
+      <canvas id="ratingsChart"></canvas>
+    </div>
     <div class="time-scrubber" id="scrubber">
       <div class="scrubber-track">
         <div class="scrubber-thumb" id="scrubberThumb"></div>
@@ -195,41 +204,51 @@
     </div>
   </div>
 
-  <!-- Bottom 1/3 - Dynamic Dense Frames Strips -->
+  <!-- Bottom 1/3 - Frames Area -->
   <div class="frames-area">
     <div class="channel-row" id="row-kan11_hevc">
       <div class="badge-container">
         <div class="channel-badge" style="background: #10b981;" data-ch="kan11_hevc">כאן 11</div>
       </div>
-      <div class="frames-strip" id="strip-kan11_hevc"></div>
+      <div class="strip-wrapper">
+        <div class="frames-strip" id="strip-kan11_hevc" style="position:relative; width:100%; height:100%;"></div>
+      </div>
     </div>
 
     <div class="channel-row" id="row-keshet_12_hevc">
       <div class="badge-container">
         <div class="channel-badge" style="background: #ef4444;" data-ch="keshet_12_hevc">קשת 12</div>
       </div>
-      <div class="frames-strip" id="strip-keshet_12_hevc"></div>
+      <div class="strip-wrapper">
+        <div class="frames-strip" id="strip-keshet_12_hevc" style="position:relative; width:100%; height:100%;"></div>
+      </div>
     </div>
 
     <div class="channel-row" id="row-reshet_13_hevc">
       <div class="badge-container">
         <div class="channel-badge" style="background: #3b82f6;" data-ch="reshet_13_hevc">רשת 13</div>
       </div>
-      <div class="frames-strip" id="strip-reshet_13_hevc"></div>
+      <div class="strip-wrapper">
+        <div class="frames-strip" id="strip-reshet_13_hevc" style="position:relative; width:100%; height:100%;"></div>
+      </div>
     </div>
 
     <div class="channel-row" id="row-ch14_hevc">
       <div class="badge-container">
         <div class="channel-badge" style="background: #f59e0b;" data-ch="ch14_hevc">עכשיו 14</div>
       </div>
-      <div class="frames-strip" id="strip-ch14_hevc"></div>
+      <div class="strip-wrapper">
+        <div class="frames-strip" id="strip-ch14_hevc" style="position:relative; width:100%; height:100%;"></div>
+      </div>
     </div>
 
     <div class="channel-row" id="row-i24_he">
       <div class="badge-container">
         <div class="channel-badge" style="background: #06b6d4;" data-ch="i24_he">i24NEWS</div>
       </div>
-      <div class="frames-strip" id="strip-i24_he"></div>
+      <div class="strip-wrapper">
+        <div class="frames-strip" id="strip-i24_he" style="position:relative; width:100%; height:100%;"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -247,7 +266,6 @@
 
 <script>
 (()=>{
-  // Constants & Base Configurations
   const A = 811566740000, D = new Date(2026, 8, 20, 6, 11);
   const CHANNELS = [
     { id: 'kan11_hevc', name: 'כאן 11', color: '#10b981', visible: true },
@@ -259,16 +277,14 @@
 
   const START_MINUTES = 6 * 60;   // 06:00
   const END_MINUTES = 26 * 60;    // 02:00 (Next day)
-  const WINDOW_MINUTES = 240;     // 4-Hour Viewing Window
-  const TICK_INTERVAL = 15;       // 15 Minutes Label Steps (06:00, 06:15, 06:30...)
-  const FRAMES_PER_ROW = 32;      // Number of Overlapping Frames per Strip
+  const WINDOW_MINUTES = 240;     // 4 Hours
+  const FRAME_STEP = 5;           // Frame every 5 minutes
 
   let currentStartMinute = START_MINUTES;
   let chart = null;
   let fullData = {};
   let modalUrl = '';
 
-  // Generate continuous minute-by-minute mock data
   function generateFullDayData() {
     const totalMinutes = END_MINUTES - START_MINUTES;
     CHANNELS.forEach(ch => {
@@ -289,7 +305,6 @@
     return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
   }
 
-  // CloudFront Snapshot Url Generator
   function getFrameUrl(chId, timeStr) {
     const today = new Date();
     const [h, m] = timeStr.split(':').map(Number);
@@ -302,7 +317,6 @@
     return { url, pos };
   }
 
-  // Initialize Chart.js Chart
   function initChart() {
     const ctx = document.getElementById('ratingsChart').getContext('2d');
     
@@ -333,7 +347,7 @@
         },
         interaction: { mode: 'index', intersect: false },
         plugins: {
-          legend: { display: false }, // Removed legend above chart
+          legend: { display: false },
           tooltip: {
             backgroundColor: '#0f172a',
             borderColor: '#334155',
@@ -349,7 +363,13 @@
         scales: {
           x: {
             position: 'bottom',
-            grid: { color: '#1e293b' },
+            grid: { 
+              color: (context) => {
+                const label = context.tick && context.tick.label;
+                return (label && label !== '') ? '#1e293b' : 'transparent';
+              },
+              borderColor: '#1e293b'
+            },
             ticks: { 
               color: '#64748b', 
               font: { size: 10, weight: '600' }, 
@@ -358,7 +378,7 @@
             }
           },
           y: {
-            position: 'left', // Y Axis on Left Side
+            position: 'left',
             grid: { color: '#1e293b' },
             ticks: { color: '#64748b', font: { size: 10 }, callback: v => v + '%' },
             min: 0,
@@ -369,15 +389,14 @@
     });
   }
 
-  // Update Chart & Frame View Window
   function updateWindow(startMin) {
     currentStartMinute = Math.max(START_MINUTES, Math.min(END_MINUTES - WINDOW_MINUTES, startMin));
     const endMin = currentStartMinute + WINDOW_MINUTES;
 
-    // 1. Labels every 15 minutes for exact alignment (06:00, 06:15, 06:30...)
+    // Labels every minute, text rendered only every 15 minutes for clean grid lines
     const labels = [];
     for (let m = currentStartMinute; m <= endMin; m++) {
-      if (m % TICK_INTERVAL === 0 || m === currentStartMinute || m === endMin) {
+      if (m % 15 === 0) {
         labels.push(minToTimeString(m));
       } else {
         labels.push('');
@@ -385,7 +404,6 @@
     }
     chart.data.labels = labels;
 
-    // 2. Data Points
     CHANNELS.forEach((ch, idx) => {
       const sliceData = [];
       for (let m = currentStartMinute; m <= endMin; m++) {
@@ -397,20 +415,21 @@
     });
     chart.update('none');
 
-    // 3. Render Frame Strips with 100% Horizontal Alignment
+    // Render Frames every 5 minutes with 100% alignment
+    const totalFrames = WINDOW_MINUTES / FRAME_STEP;
+
     CHANNELS.forEach(ch => {
       const strip = document.getElementById(`strip-${ch.id}`);
       strip.innerHTML = '';
-      const stepMin = WINDOW_MINUTES / (FRAMES_PER_ROW - 1);
 
-      for (let i = 0; i < FRAMES_PER_ROW; i++) {
-        const cardMin = Math.round(currentStartMinute + i * stepMin);
+      for (let i = 0; i <= totalFrames; i++) {
+        const cardMin = currentStartMinute + (i * FRAME_STEP);
         const timeStr = minToTimeString(cardMin);
         const { url, pos } = getFrameUrl(ch.id, timeStr);
 
         const card = document.createElement('div');
         card.className = 'frame-card';
-        card.style.left = `${(i / (FRAMES_PER_ROW - 1)) * 95}%`;
+        card.style.left = `${(i * FRAME_STEP / WINDOW_MINUTES) * 100}%`;
         card.style.zIndex = i + 1;
         card.style.backgroundImage = `url("${url}")`;
         card.style.backgroundPosition = pos;
@@ -421,14 +440,12 @@
       }
     });
 
-    // 4. Sync Scrubber Thumb Position
     const progress = (currentStartMinute - START_MINUTES) / (END_MINUTES - START_MINUTES - WINDOW_MINUTES);
     const thumb = document.getElementById('scrubberThumb');
     thumb.style.width = '100px';
     thumb.style.left = `calc(${progress * 100}% - ${progress * 100}px)`;
   }
 
-  // Channel Toggle logic on Badge Click
   function setupChannelToggles() {
     document.querySelectorAll('.channel-badge').forEach(badge => {
       badge.onclick = () => {
@@ -450,7 +467,6 @@
     });
   }
 
-  // Interactive Wheel and Dragging
   function setupInteraction() {
     window.addEventListener('wheel', (e) => {
       const delta = Math.sign(e.deltaY) * 3;
@@ -480,7 +496,6 @@
     }
   }
 
-  // Modal Functions
   function showModal(ch, timeStr, url, pos) {
     modalUrl = url;
     const cnt = document.getElementById('mCnt');
@@ -511,7 +526,6 @@
     if (e.key === 'Escape') closeModal();
   });
 
-  // Entry Point Initialization
   generateFullDayData();
   initChart();
   setupChannelToggles();
