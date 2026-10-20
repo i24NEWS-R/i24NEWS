@@ -2,6 +2,7 @@ import os, re, requests, pandas as pd, streamlit as st, yt_dlp
 
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
 
+# עיצוב CSS מתקדם לדשבורד יוקרתי, ממורכז לחלוטין, כרטיסים מעוגלים עם קו מקווקו
 st.markdown("""
     <style>
     .main-title {
@@ -75,7 +76,7 @@ st.markdown("""
 st.markdown('<div class="main-title">October 7 - The last day of my life</div>', unsafe_allow_html=True)
 
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "October7.csv")
-META_USER_TOKEN = "EAAORARdXiYYBS9qNAtINW7KnKzvAOObamroZA1ZBqsS9U4OsiPv5iKNtK6rulafegvF4Xy8lZA3ZA0W3McOPrjLi0zDQypwUVgnSinhHvtwjOE8COktwJWVlZAhnknlb8z4zzLHU4CNkNU1SlX6ZCAqrw5wTO0R6ZAuxolZBeQxFRdAnlZAqSkQOCYA3tZCjERQk3XQiaCvh4ehdq5WeoLFTfwolyISwUhaelXcwO6tKyJxZCJlSU0LS2wAPAAUuZCpzerXdMgC0eVvkPNyjnhndFJgEtcbg9O2"
+META_USER_TOKEN = "EAAORARdXiYYBSZCSmxXaREuaTZBnEXIn3NkLQFA1uZAIVZBJlIoKcjiDBacC6zbwe6QX3IXIxXwPJwyjdEdSNLtFnEYuM9R4ERmvLsOeOnLel6Hpk3YamKfSWh1iwGPIbVcwN0TCm2gon2odh1PwRbt3ZAS63RYrNOEoI61QWhkaXUUWs5zCujkm1JXIdM1dewSaCZCjCM2tCi0oBxWdExSnZBZC2YLSTNJG6v6STO8TXNCYOtW5bGz3KbIZD"
 
 URLS = [
     # Facebook Reels
@@ -85,7 +86,7 @@ URLS = [
     "https://www.facebook.com/reel/1834808051214925", "https://www.facebook.com/reel/2003722767682462",
     "https://www.facebook.com/reel/2004915936880315", "https://www.facebook.com/reel/28594037286923487",
     "https://www.facebook.com/reel/3189661697897533", "https://www.facebook.com/reel/996450340148747",
-    # Instagram
+    # Instagram (ממתין)
     "https://www.instagram.com/p/Deb5bDXD6Gs/", "https://www.instagram.com/p/Deb5UJfFKU1/",
     "https://www.instagram.com/p/Deb8nh5Du4y/", "https://www.instagram.com/p/DeeYjQ2DnYf/",
     "https://www.instagram.com/p/DeeYTozDXdP/", "https://www.instagram.com/p/DeeYzU5lXQ_/",
@@ -123,8 +124,7 @@ def fetch_facebook_data():
             fb_id = match.group(1) if match else None
             
             if fb_id:
-                # ה-URL המדויק בלי בעיות formatting
-                api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
+                api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,from{{name}},picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
                 try:
                     res = requests.get(api_url).json()
                     if "error" not in res:
@@ -159,83 +159,17 @@ def fetch_facebook_data():
             })
     return fb_data
 
-def fetch_instagram_data():
-    ig_data = []
-    ig_accounts = []
-    
-    # שלב 1: שליפת כל עמודי הפייסבוק וחשבונות האינסטגרם המקושרים אליהם
-    try:
-        acc_url = f"https://graph.facebook.com/v26.0/me/accounts?fields=instagram_business_account{{id,username}},name&access_token={META_USER_TOKEN}"
-        res = requests.get(acc_url).json()
-        for page in res.get("data", []):
-            ig_acc = page.get("instagram_business_account")
-            if ig_acc:
-                ig_accounts.append({
-                    "id": ig_acc.get("id"),
-                    "username": ig_acc.get("username", "i24NEWS")
-                })
-    except Exception:
-        pass
-
-    # שלב 2: סריקת הפיד מכל החשבונות ומיפוי לפי Shortcode (למשל Deb5UJfFKU1)
-    shortcode_map = {}
-    for ig in ig_accounts:
-        ig_id = ig["id"]
-        default_uname = ig["username"]
-        try:
-            feed_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
-            media_res = requests.get(feed_url).json()
-            for post in media_res.get("data", []):
-                p_link = post.get("permalink", "")
-                # חילוץ ה-Shortcode מתוך ה-permalink (למשל מתוך /reel/Shortcode/ או /p/Shortcode/)
-                sc_match = re.search(r'/(?:p|reel)/([^/]+)', p_link)
-                if sc_match:
-                    code = sc_match.group(1)
-                    shortcode_map[code] = {
-                        "username": default_uname,
-                        "caption": post.get("caption") or "ללא כותרת",
-                        "thumbnail_url": post.get("thumbnail_url", ""),
-                        "views": post.get("total_views_count", 0) or 0,
-                        "likes": post.get("total_like_count", 0) or 0,
-                        "comments": post.get("total_comments_count", 0) or 0,
-                        "shares": post.get("shares_count", 0) or 0
-                    }
-        except Exception:
-            pass
-
-    # שלב 3: התאמת קישורי האינסטגרם שברשימה לפי ה-Shortcode שלהם
-    for url in URLS:
-        if "instagram.com" in url:
-            sc_match = re.search(r'/(?:p|reel)/([^/]+)', url)
-            target_code = sc_match.group(1) if sc_match else None
-            
-            matched = shortcode_map.get(target_code) if target_code else None
-            
-            if matched:
-                ig_data.append({
-                    "פלטפורמה": "אינסטגרם",
-                    "שם משתמש": matched["username"],
-                    "תמונה": matched["thumbnail_url"],
-                    "שם סרטון": matched["caption"],
-                    "קישור": url,
-                    "צפיות": matched["views"],
-                    "לייקים": matched["likes"],
-                    "תגובות": matched["comments"],
-                    "שיתופים": matched["shares"]
-                })
-            else:
-                ig_data.append({
-                    "פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", 
-                    "שם סרטון": "לא נמצא בפיד המקושר", "קישור": url, 
-                    "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
-                })
-    return ig_data
-
 def fetch_ytdlp_data():
     other_data = []
     with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
         for url in URLS:
-            if not ("facebook.com" in url or "fb.watch" in url or "instagram.com" in url):
+            if "instagram.com" in url:
+                other_data.append({
+                    "פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", 
+                    "שם סרטון": "ממתין לאינסטגרם API", "קישור": url, 
+                    "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
+                })
+            elif not ("facebook.com" in url or "fb.watch" in url):
                 if "tiktok.com" in url:
                     plat = "טיקטוק"
                 elif "x.com" in url or "twitter.com" in url:
@@ -247,7 +181,7 @@ def fetch_ytdlp_data():
 
                 try:
                     info = ydl.extract_info(url, download=False)
-                    uploader = info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע"
+                    uploader = info.get("uploader") or info.get("channel") or "לא ידוע"
                     shares = info.get("repost_count", 0) or info.get("share_count", 0) or 0
                     other_data.append({
                         "פלטפורמה": plat, "שם משתמש": uploader, "תמונה": info.get("thumbnail", ""),
@@ -265,7 +199,7 @@ def fetch_ytdlp_data():
     return other_data
 
 def fetch_all_social_data():
-    df = pd.DataFrame(fetch_facebook_data() + fetch_instagram_data() + fetch_ytdlp_data())
+    df = pd.DataFrame(fetch_facebook_data() + fetch_ytdlp_data())
     df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
     return df
 
@@ -316,7 +250,7 @@ with col4:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# בניית טבלה שטוחה לחלוטין (ללא רווחים מיותרים)
+# בניית טבלה שטוחה לחלוטין (ללא רווחים מיותרים שגורמים ל-Markdown לפרש אותה כקוד)
 table_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
 
 for _, row in df.iterrows():
