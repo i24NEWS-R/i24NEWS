@@ -123,7 +123,6 @@ def fetch_facebook_data():
             fb_id = match.group(1) if match else None
             
             if fb_id:
-                # ה-URL המדויק בלי בעיות formatting
                 api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
                 try:
                     res = requests.get(api_url).json()
@@ -163,7 +162,6 @@ def fetch_instagram_data():
     ig_data = []
     ig_accounts = []
     
-    # שלב 1: שליפת כל עמודי הפייסבוק וחשבונות האינסטגרם המקושרים אליהם
     try:
         acc_url = f"https://graph.facebook.com/v26.0/me/accounts?fields=instagram_business_account{{id,username}},name&access_token={META_USER_TOKEN}"
         res = requests.get(acc_url).json()
@@ -177,33 +175,36 @@ def fetch_instagram_data():
     except Exception:
         pass
 
-    # שלב 2: סריקת הפיד מכל החשבונות ומיפוי לפי Shortcode (למשל Deb5UJfFKU1)
     shortcode_map = {}
     for ig in ig_accounts:
         ig_id = ig["id"]
         default_uname = ig["username"]
-        try:
-            feed_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
-            media_res = requests.get(feed_url).json()
-            for post in media_res.get("data", []):
-                p_link = post.get("permalink", "")
-                # חילוץ ה-Shortcode מתוך ה-permalink (למשל מתוך /reel/Shortcode/ או /p/Shortcode/)
-                sc_match = re.search(r'/(?:p|reel)/([^/]+)', p_link)
-                if sc_match:
-                    code = sc_match.group(1)
-                    shortcode_map[code] = {
-                        "username": default_uname,
-                        "caption": post.get("caption") or "ללא כותרת",
-                        "thumbnail_url": post.get("thumbnail_url", ""),
-                        "views": post.get("total_views_count", 0) or 0,
-                        "likes": post.get("total_like_count", 0) or 0,
-                        "comments": post.get("total_comments_count", 0) or 0,
-                        "shares": post.get("shares_count", 0) or 0
-                    }
-        except Exception:
-            pass
+        
+        # סריקה עם תמיכה בדפדוף (Pagination) אוטומטי לעמודים הבאים
+        next_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
+        
+        while next_url:
+            try:
+                media_res = requests.get(next_url).json()
+                for post in media_res.get("data", []):
+                    p_link = post.get("permalink", "")
+                    sc_match = re.search(r'/(?:p|reel)/([^/]+)', p_link)
+                    if sc_match:
+                        code = sc_match.group(1)
+                        shortcode_map[code] = {
+                            "username": default_uname,
+                            "caption": post.get("caption") or "ללא כותרת",
+                            "thumbnail_url": post.get("thumbnail_url", ""),
+                            "views": post.get("total_views_count", 0) or 0,
+                            "likes": post.get("total_like_count", 0) or 0,
+                            "comments": post.get("total_comments_count", 0) or 0,
+                            "shares": post.get("shares_count", 0) or 0
+                        }
+                # מעבר לעמוד הבא במידה וקיים בתוצאות
+                next_url = media_res.get("paging", {}).get("next")
+            except Exception:
+                break
 
-    # שלב 3: התאמת קישורי האינסטגרם שברשימה לפי ה-Shortcode שלהם
     for url in URLS:
         if "instagram.com" in url:
             sc_match = re.search(r'/(?:p|reel)/([^/]+)', url)
@@ -213,15 +214,9 @@ def fetch_instagram_data():
             
             if matched:
                 ig_data.append({
-                    "פלטפורמה": "אינסטגרם",
-                    "שם משתמש": matched["username"],
-                    "תמונה": matched["thumbnail_url"],
-                    "שם סרטון": matched["caption"],
-                    "קישור": url,
-                    "צפיות": matched["views"],
-                    "לייקים": matched["likes"],
-                    "תגובות": matched["comments"],
-                    "שיתופים": matched["shares"]
+                    "פלטפורמה": "אינסטגרם", "שם משתמש": matched["username"], "תמונה": matched["thumbnail_url"],
+                    "שם סרטון": matched["caption"], "קישור": url, "צפיות": matched["views"],
+                    "לייקים": matched["likes"], "תגובות": matched["comments"], "שיתופים": matched["shares"]
                 })
             else:
                 ig_data.append({
@@ -275,15 +270,43 @@ if os.path.exists(CACHE_FILE):
         with st.spinner("מעדכן מבנה נתונים..."):
             df = fetch_all_social_data()
 else:
-    with st.spinner("טוען נתונים..."):
+    with st.spinner("טוען נתונים ראשוני..."):
         df = fetch_all_social_data()
 
 with st.sidebar:
-    if st.button("🔄 רענן נתונים"):
-        with st.spinner("מרענן מול ה-API והרשתות..."):
+    st.markdown("### 🔄 ניהול ורענון נתונים")
+    
+    if st.button("רענן את כל הפלטפורמות"):
+        with st.spinner("מרענן את כל הנתונים מול כל הרשתות..."):
             df = fetch_all_social_data()
+            st.rerun()
 
-# כרטיסי סיכום עליונים מעוצבים במרכז עם קו מקווקו
+    st.markdown("---")
+    
+    if st.button("🔄 רענן פייסבוק בלבד"):
+        with st.spinner("מרענן נתוני פייסבוק..."):
+            fb_new = pd.DataFrame(fetch_facebook_data())
+            df = df[df["פלטפורמה"] != "פייסבוק"]
+            df = pd.concat([df, fb_new], ignore_index=True)
+            df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+            st.rerun()
+
+    if st.button("🔄 רענן אינסטגרם בלבד"):
+        with st.spinner("מרענן נתוני אינסטגרם..."):
+            ig_new = pd.DataFrame(fetch_instagram_data())
+            df = df[df["פלטפורמה"] != "אינסטגרם"]
+            df = pd.concat([df, ig_new], ignore_index=True)
+            df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+            st.rerun()
+
+    if st.button("🔄 רענן טיקטוק / X / יוטיוב"):
+        with st.spinner("מרענן נתוני רשתות נוספות..."):
+            other_new = pd.DataFrame(fetch_ytdlp_data())
+            df = df[df["פלטפורמה"].isin(["פייסבוק", "אינסטגרם"])]
+            df = pd.concat([df, other_new], ignore_index=True)
+            df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
+            st.rerun()
+
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.markdown(f"""
@@ -316,7 +339,6 @@ with col4:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# בניית טבלה שטוחה לחלוטין (ללא רווחים מיותרים)
 table_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
 
 for _, row in df.iterrows():
