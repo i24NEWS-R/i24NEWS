@@ -23,6 +23,7 @@ st.markdown("""
     .skeleton { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 800px 100%; animation: shimmer 1.5s infinite linear; border-radius: 4px; display: inline-block; }
     .skeleton-text { width: 70%; height: 14px; }
     .skeleton-box { width: 36px; height: 36px; border-radius: 4px; }
+    .sidebar-icon { display: flex; align-items: center; height: 38px; justify-content: center; font-size: 1.2rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -60,9 +61,19 @@ def get_full_url(item):
 
 with st.sidebar:
     st.markdown("### 🔄 ניהול ורענון נתונים")
-    refresh_all = st.button("🔄 רענן את כל הפלטפורמות")
+    refresh_all = st.button("🔄 רענן את כל הפלטפורמות", use_container_width=True)
     st.markdown("---")
-    refresh_yt, refresh_tt, refresh_tw, refresh_fb, refresh_ig = st.button("📺 רענן יוטיוב"), st.button("🎵 רענן טיקטוק"), st.button("🐦 רענן טוויטר"), st.button("📘 רענן פייסבוק"), st.button("📸 רענן אינסטגרם")
+    
+    def sidebar_button(icon_html, label, key):
+        c1, c2 = st.columns([0.15, 0.85])
+        with c1: st.markdown(icon_html, unsafe_allow_html=True)
+        with c2: return st.button(label, key=key, use_container_width=True)
+
+    refresh_yt = sidebar_button('<div class="sidebar-icon"><i class="fa-brands fa-youtube" style="color: #ff0000;"></i></div>', "רענן יוטיוב", "btn_yt")
+    refresh_tt = sidebar_button('<div class="sidebar-icon"><i class="fa-brands fa-tiktok"></i></div>', "רענן טיקטוק", "btn_tt")
+    refresh_tw = sidebar_button('<div class="sidebar-icon"><i class="fa-brands fa-twitter" style="color: #1da1f2;"></i></div>', "רענן טוויטר", "btn_tw")
+    refresh_fb = sidebar_button('<div class="sidebar-icon"><i class="fa-brands fa-facebook" style="color: #1877f2;"></i></div>', "רענן פייסבוק", "btn_fb")
+    refresh_ig = sidebar_button('<div class="sidebar-icon"><i class="fa-brands fa-instagram" style="color: #e4405f;"></i></div>', "רענן אינסטגרם", "btn_ig")
 
 if refresh_all and os.path.exists(CACHE_FILE): os.remove(CACHE_FILE)
 
