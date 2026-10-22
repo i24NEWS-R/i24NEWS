@@ -7,6 +7,7 @@ import yt_dlp
 st.set_page_config(page_title="October 7", page_icon="📊", layout="wide")
 
 st.markdown("""
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
     .main-title { text-align: center; font-size: 2.2rem; font-weight: 700; color: #1e293b; margin-bottom: 2rem; }
     .metric-card { background-color: #f8f9fa; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
@@ -73,8 +74,19 @@ def render_dashboard(df):
         col.markdown(f'<div class="metric-card"><div class="metric-title">{title}</div><div class="metric-value">{int(df[key].sum()):,}</div></div>', unsafe_allow_html=True)
     
     t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
+    
+    icon_mapping = {
+        "יוטיוב": '<i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 1.1rem; margin-left: 6px;"></i>יוטיוב',
+        "טיקטוק": '<i class="fa-brands fa-tiktok" style="font-size: 1.1rem; margin-left: 6px;"></i>טיקטוק',
+        "X (טוויטר)": '<i class="fa-brands fa-x-twitter" style="font-size: 1.1rem; margin-left: 6px;"></i>X',
+        "פייסבוק": '<i class="fa-brands fa-facebook" style="color: #1877f2; font-size: 1.1rem; margin-left: 6px;"></i>פייסבוק',
+        "אינסטגרם": '<i class="fa-brands fa-instagram" style="color: #e4405f; font-size: 1.1rem; margin-left: 6px;"></i>אינסטגרם'
+    }
+
     for _, row in df.iterrows():
         plat, user, title, link = row["פלטפורמה"], row["שם משתמש"], row["שם סרטון"], row["קישור"]
+        plat_display = icon_mapping.get(plat, plat)
+        
         if title == "טוען נתונים...":
             thumb_tag, user_cell, title_cell, views, likes, comments, shares = '<div class="skeleton skeleton-box"></div>', '<div class="skeleton skeleton-text" style="width: 60%;"></div>', '<div class="skeleton skeleton-text" style="width: 85%;"></div>', *(['<div class="skeleton skeleton-text" style="width: 30px;"></div>'] * 4)
         else:
@@ -82,7 +94,7 @@ def render_dashboard(df):
             thumb_tag = f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;" />' if pd.notna(thumb) and str(thumb).startswith("http") else ""
             user_cell, title_cell = user, f'<a href="{link}" target="_blank" class="video-link">{title}</a>'
             views, likes, comments, shares = f"{int(row['צפיות']):,}", f"{int(row['לייקים']):,}", f"{int(row['תגובות']):,}", f"{int(row['שיתופים']):,}"
-        t_html += f"<tr><td>{plat}</td><td>{user_cell}</td><td>{thumb_tag}</td><td>{title_cell}</td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>"
+        t_html += f"<tr><td>{plat_display}</td><td>{user_cell}</td><td>{thumb_tag}</td><td>{title_cell}</td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>"
     table_placeholder.markdown(t_html + "</tbody></table>", unsafe_allow_html=True)
 
 df_cached = pd.read_csv(CACHE_FILE) if os.path.exists(CACHE_FILE) else None
