@@ -96,7 +96,7 @@ def render_dashboard(df):
 
     for _, row in df.iterrows():
         plat, user, title, link = row["פלטפורמה"], row["שם משתמש"], row["שם סרטון"], row["קישור"]
-        plat_display = icon_mapping.get(plat, plat)
+        plat_display = icon_mapping.get(plat, f'<div style="text-align: center;">{plat}</div>')
         
         if title == "טוען נתונים...":
             thumb_tag, user_cell, title_cell, views, likes, comments, shares = '<div class="skeleton skeleton-box"></div>', '<div class="skeleton skeleton-text" style="width: 60%;"></div>', '<div class="skeleton skeleton-text" style="width: 85%;"></div>', *(['<div class="skeleton skeleton-text" style="width: 30px;"></div>'] * 4)
