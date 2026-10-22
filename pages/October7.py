@@ -40,10 +40,10 @@ ITEMS = [
     {"platform": "טיקטוק", "username": "i24news_ar", "id": "7693308032641404178"}, {"platform": "טיקטוק", "username": "i24news_ar", "id": "7693605131383868673"}, {"platform": "טיקטוק", "username": "i24news_ar", "id": "7696223468769086721"}, {"platform": "טיקטוק", "username": "i24news_ar", "id": "7696505060129312001"},
     {"platform": "טיקטוק", "username": "i24news_en", "id": "7693865442019921160"}, {"platform": "טיקטוק", "username": "i24news_en", "id": "7694255310751436050"}, {"platform": "טיקטוק", "username": "i24news_en", "id": "7696201889632865544"}, {"platform": "טיקטוק", "username": "i24news_en", "id": "7696547290550504712"},
     {"platform": "טיקטוק", "username": "i24news_fr", "id": "7693865674698935570"}, {"platform": "טיקטוק", "username": "i24news_fr", "id": "7694255495154109714"}, {"platform": "טיקטוק", "username": "i24news_fr", "id": "7696202386062232840"}, {"platform": "טיקטוק", "username": "i24news_fr", "id": "7696547126687583496"},
-    # X (Twitter)
-    {"platform": "X (טוויטר)", "username": "i24NEWS_AR", "id": "2107771873887154185"}, {"platform": "X (טוויטר)", "username": "i24NEWS_AR", "id": "2108150421772771395"}, {"platform": "X (טוויטר)", "username": "i24NEWS_AR", "id": "2110056520885141979"}, {"platform": "X (טוויטר)", "username": "i24NEWS_AR", "id": "2110353427012403661"},
-    {"platform": "X (טוויטר)", "username": "i24NEWS_EN", "id": "2107772249511973327"}, {"platform": "X (טוויטר)", "username": "i24NEWS_EN", "id": "2108157434930057278"}, {"platform": "X (טוויטר)", "username": "i24NEWS_EN", "id": "2110055247792279600"}, {"platform": "X (טוויטר)", "username": "i24NEWS_EN", "id": "2110353863069126843"},
-    {"platform": "X (טוויטר)", "username": "i24NEWS_FR", "id": "2107771596178092264"}, {"platform": "X (טוויטר)", "username": "i24NEWS_FR", "id": "2108150891564179901"}, {"platform": "X (טוויטר)", "username": "i24NEWS_FR", "id": "2110055870185058765"}, {"platform": "X (טוויטר)", "username": "i24NEWS_FR", "id": "2110354237012185370"},
+    # Twitter
+    {"platform": "טוויטר", "username": "i24NEWS_AR", "id": "2107771873887154185"}, {"platform": "טוויטר", "username": "i24NEWS_AR", "id": "2108150421772771395"}, {"platform": "טוויטר", "username": "i24NEWS_AR", "id": "2110056520885141979"}, {"platform": "טוויטר", "username": "i24NEWS_AR", "id": "2110353427012403661"},
+    {"platform": "טוויטר", "username": "i24NEWS_EN", "id": "2107772249511973327"}, {"platform": "טוויטר", "username": "i24NEWS_EN", "id": "2108157434930057278"}, {"platform": "טוויטר", "username": "i24NEWS_EN", "id": "2110055247792279600"}, {"platform": "טוויטר", "username": "i24NEWS_EN", "id": "2110353863069126843"},
+    {"platform": "טוויטר", "username": "i24NEWS_FR", "id": "2107771596178092264"}, {"platform": "טוויטר", "username": "i24NEWS_FR", "id": "2108150891564179901"}, {"platform": "טוויטר", "username": "i24NEWS_FR", "id": "2110055870185058765"}, {"platform": "טוויטר", "username": "i24NEWS_FR", "id": "2110354237012185370"},
     # Facebook
     {"platform": "פייסבוק", "id": "1060758100274123"}, {"platform": "פייסבוק", "id": "1098661659684872"}, {"platform": "פייסבוק", "id": "1102560435692402"}, {"platform": "פייסבוק", "id": "1421376970083491"},
     {"platform": "פייסבוק", "id": "1427558415388540"}, {"platform": "פייסבוק", "id": "1575591177051076"}, {"platform": "פייסבוק", "id": "1834808051214925"}, {"platform": "פייסבוק", "id": "2003722767682462"},
@@ -56,13 +56,13 @@ ITEMS = [
 
 def get_full_url(item):
     p, i, u = item["platform"], item["id"], item.get("username", "")
-    return {"יוטיוב": f"https://youtube.com/shorts/{i}", "טיקטוק": f"https://www.tiktok.com/@{u}/video/{i}", "X (טוויטר)": f"https://x.com/{u}/status/{i}", "פייסבוק": f"https://www.facebook.com/reel/{i}", "אינסטגרם": f"https://www.instagram.com/p/{i}"}.get(p, "")
+    return {"יוטיוב": f"https://youtube.com/shorts/{i}", "טיקטוק": f"https://www.tiktok.com/@{u}/video/{i}", "טוויטר": f"https://x.com/{u}/status/{i}", "פייסבוק": f"https://www.facebook.com/reel/{i}", "אינסטגרם": f"https://www.instagram.com/p/{i}"}.get(p, "")
 
 with st.sidebar:
     st.markdown("### 🔄 ניהול ורענון נתונים")
     refresh_all = st.button("🔄 רענן את כל הפלטפורמות")
     st.markdown("---")
-    refresh_yt, refresh_tt, refresh_tw, refresh_fb, refresh_ig = st.button("📺 רענן יוטיוב בלבד"), st.button("🎵 רענן טיקטוק בלבד"), st.button("🐦 רענן X בלבד"), st.button("📘 רענן פייסבוק בלבד"), st.button("📸 רענן אינסטגרם בלבד")
+    refresh_yt, refresh_tt, refresh_tw, refresh_fb, refresh_ig = st.button("📺 רענן יוטיוב"), st.button("🎵 רענן טיקטוק"), st.button("🐦 רענן טוויטר"), st.button("📘 רענן פייסבוק"), st.button("📸 רענן אינסטגרם")
 
 if refresh_all and os.path.exists(CACHE_FILE): os.remove(CACHE_FILE)
 
@@ -76,11 +76,11 @@ def render_dashboard(df):
     t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
     
     icon_mapping = {
-        "יוטיוב": '<i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 1.1rem; margin-left: 6px;"></i>יוטיוב',
-        "טיקטוק": '<i class="fa-brands fa-tiktok" style="font-size: 1.1rem; margin-left: 6px;"></i>טיקטוק',
-        "X (טוויטר)": '<i class="fa-brands fa-x-twitter" style="font-size: 1.1rem; margin-left: 6px;"></i>X',
-        "פייסבוק": '<i class="fa-brands fa-facebook" style="color: #1877f2; font-size: 1.1rem; margin-left: 6px;"></i>פייסבוק',
-        "אינסטגרם": '<i class="fa-brands fa-instagram" style="color: #e4405f; font-size: 1.1rem; margin-left: 6px;"></i>אינסטגרם'
+        "יוטיוב": '<div style="text-align: center;"><i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">יוטיוב</span></div>',
+        "טיקטוק": '<div style="text-align: center;"><i class="fa-brands fa-tiktok" style="font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טיקטוק</span></div>',
+        "טוויטר": '<div style="text-align: center;"><i class="fa-brands fa-twitter" style="color: #1da1f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טוויטר</span></div>',
+        "פייסבוק": '<div style="text-align: center;"><i class="fa-brands fa-facebook" style="color: #1877f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">פייסבוק</span></div>',
+        "אינסטגרם": '<div style="text-align: center;"><i class="fa-brands fa-instagram" style="color: #e4405f; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">אינסטגרם</span></div>'
     }
 
     for _, row in df.iterrows():
@@ -115,7 +115,7 @@ render_dashboard(current_df)
 
 if df_cached is not None and not any_refresh: st.stop()
 
-target_plat = {"יוטיוב": refresh_yt, "טיקטוק": refresh_tt, "X (טוויטר)": refresh_tw, "פייסבוק": refresh_fb, "אינסטגרם": refresh_ig}
+target_plat = {"יוטיוב": refresh_yt, "טיקטוק": refresh_tt, "טוויטר": refresh_tw, "פייסבוק": refresh_fb, "אינסטגרם": refresh_ig}
 active_refresh = next((k for k, v in target_plat.items() if v), None)
 
 def get_ig_map():
