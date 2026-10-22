@@ -90,6 +90,7 @@ def render_dashboard(df):
         "יוטיוב": '<div style="text-align: center;"><i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">יוטיוב</span></div>',
         "טיקטוק": '<div style="text-align: center;"><i class="fa-brands fa-tiktok" style="font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טיקטוק</span></div>',
         "טוויטר": '<div style="text-align: center;"><i class="fa-brands fa-twitter" style="color: #1da1f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טוויטר</span></div>',
+        "X (טוויטר)": '<div style="text-align: center;"><i class="fa-brands fa-twitter" style="color: #1da1f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טוויטר</span></div>',
         "פייסבוק": '<div style="text-align: center;"><i class="fa-brands fa-facebook" style="color: #1877f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">פייסבוק</span></div>',
         "אינסטגרם": '<div style="text-align: center;"><i class="fa-brands fa-instagram" style="color: #e4405f; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">אינסטגרם</span></div>'
     }
@@ -175,8 +176,8 @@ with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
         else:
             try:
                 info = ydl.extract_info(url, download=False)
-                updated = {"פלטפורמה": plat, "שם משתמש": info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע", "תמונה": info.get("thumbnail", ""), "שם סרטון": info.get("description") or info.get("title") or "ללא כותרת", "קישור": url, "צפיות": info.get("view_count", 0) or 0, "לייקים": info.get("like_count", 0) or 0, "תגובות": info.get("comment_count", 0) or 0, "שיתופים": info.get("repost_count", 0) or info.get("share_count", 0) or 0}
-            except: updated = {"פלטפורמה": plat, "שם משתמש": "שגיאה בשליפה", "תמונה": "", "שם סרטון": "שגיאה בשליפה", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
+                updated = {"פלטפורמה": "טוויטר" if plat in ["טוויטר", "X (טוויטר)"] else plat, "שם משתמש": info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע", "תמונה": info.get("thumbnail", ""), "שם סרטון": info.get("description") or info.get("title") or "ללא כותרת", "קישור": url, "צפיות": info.get("view_count", 0) or 0, "לייקים": info.get("like_count", 0) or 0, "תגובות": info.get("comment_count", 0) or 0, "שיתופים": info.get("repost_count", 0) or info.get("share_count", 0) or 0}
+            except: updated = {"פלטפורמה": "טוויטר" if plat in ["טוויטר", "X (טוויטר)"] else plat, "שם משתמש": "שגיאה בשליפה", "תמונה": "", "שם סרטון": "שגיאה בשליפה", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
 
         all_rows[idx] = updated
         current_df = pd.DataFrame(all_rows)
