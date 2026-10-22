@@ -75,6 +75,27 @@ st.markdown(
     .video-link:hover {
         text-decoration: underline;
     }
+
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.5s infinite linear;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .skeleton-text {
+      width: 70%;
+      height: 14px;
+    }
+    .skeleton-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+    }
     </style>
 """,
     unsafe_allow_html=True,
@@ -159,219 +180,6 @@ URLS = [
 ]
 
 
-def fetch_facebook_data():
-  fb_data = []
-  for url in URLS:
-    if "facebook.com" in url or "fb.watch" in url:
-      match = re.search(r"/(?:reel|videos|posts)/(\d+)", url)
-      fb_id = match.group(1) if match else None
-
-      if fb_id:
-        api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
-        try:
-          res = requests.get(api_url).json()
-          if "error" not in res:
-            desc = res.get("description") or "ללא כותרת"
-            views = res.get("views", 0) or 0
-            username = res.get("from", {}).get("name", "i24NEWS")
-            picture = res.get("picture", "")
-
-            likes, comments, shares = 0, 0, 0
-            for insight in res.get("video_insights", {}).get("data", []):
-              m_name = insight.get("name")
-              values = insight.get("values", [{}])[0].get("value", {})
-              if m_name == "post_video_likes_by_reaction_type":
-                likes = sum(values.values())
-              elif m_name == "post_video_social_actions":
-                comments = values.get("COMMENT", 0)
-                shares = values.get("SHARE", 0)
-
-            fb_data.append({
-                "פלטפורמה": "פייסבוק",
-                "שם משתמש": username,
-                "תמונה": picture,
-                "שם סרטון": desc,
-                "קישור": url,
-                "צפיות": views,
-                "לייקים": likes,
-                "תגובות": comments,
-                "שיתופים": shares,
-            })
-            continue
-        except Exception:
-          pass
-
-      fb_data.append({
-          "פלטפורמה": "פייסבוק",
-          "שם משתמש": "i24NEWS",
-          "תמונה": "",
-          "שם סרטון": "שגיאה בשליפת API",
-          "קישור": url,
-          "צפיות": 0,
-          "לייקים": 0,
-          "תגובות": 0,
-          "שיתופים": 0,
-      })
-  return fb_data
-
-
-def fetch_instagram_data():
-  ig_data = []
-  ig_accounts = []
-
-  try:
-    acc_url = f"https://graph.facebook.com/v26.0/me/accounts?fields=instagram_business_account{{id,username}},name&access_token={META_USER_TOKEN}"
-    res = requests.get(acc_url).json()
-    for page in res.get("data", []):
-      ig_acc = page.get("instagram_business_account")
-      if ig_acc:
-        ig_accounts.append({
-            "id": ig_acc.get("id"),
-            "username": ig_acc.get("username", "i24NEWS"),
-        })
-  except Exception:
-    pass
-
-  shortcode_map = {}
-  for ig in ig_accounts:
-    ig_id = ig["id"]
-    default_uname = ig["username"]
-
-    next_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
-
-    page_count = 0
-    max_pages = 5
-    posts_scanned = 0
-    max_posts = 500
-
-    while next_url and page_count < max_pages and posts_scanned < max_posts:
-      try:
-        media_res = requests.get(next_url).json()
-        data_list = media_res.get("data", [])
-        page_count += 1
-
-        for post in data_list:
-          posts_scanned += 1
-          if posts_scanned > max_posts:
-            break
-
-          p_link = post.get("permalink", "")
-          sc_match = re.search(r"/(?:p|reel)/([^/]+)", p_link)
-          if sc_match:
-            code = sc_match.group(1)
-            shortcode_map[code] = {
-                "username": default_uname,
-                "caption": post.get("caption") or "ללא כותרת",
-                "thumbnail_url": post.get("thumbnail_url", ""),
-                "views": post.get("total_views_count", 0) or 0,
-                "likes": post.get("total_like_count", 0) or 0,
-                "comments": post.get("total_comments_count", 0) or 0,
-                "shares": post.get("shares_count", 0) or 0,
-            }
-
-        if posts_scanned >= max_posts:
-          break
-
-        next_url = media_res.get("paging", {}).get("next")
-      except Exception:
-        break
-
-  for url in URLS:
-    if "instagram.com" in url:
-      sc_match = re.search(r"/(?:p|reel)/([^/]+)", url)
-      target_code = sc_match.group(1) if sc_match else None
-
-      matched = shortcode_map.get(target_code) if target_code else None
-
-      if matched:
-        ig_data.append({
-            "פלטפורמה": "אינסטגרם",
-            "שם משתמש": matched["username"],
-            "תמונה": matched["thumbnail_url"],
-            "שם סרטון": matched["caption"],
-            "קישור": url,
-            "צפיות": matched["views"],
-            "לייקים": matched["likes"],
-            "תגובות": matched["comments"],
-            "שיתופים": matched["shares"],
-        })
-      else:
-        ig_data.append({
-            "פלטפורמה": "אינסטגרם",
-            "שם משתמש": "i24NEWS",
-            "תמונה": "",
-            "שם סרטון": "לא נמצא בפיד המקושר",
-            "קישור": url,
-            "צפיות": 0,
-            "לייקים": 0,
-            "תגובות": 0,
-            "שיתופים": 0,
-        })
-  return ig_data
-
-
-def fetch_ytdlp_data():
-  other_data = []
-  with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
-    for url in URLS:
-      if not (
-          "facebook.com" in url
-          or "fb.watch" in url
-          or "instagram.com" in url
-      ):
-        if "tiktok.com" in url:
-          plat = "טיקטוק"
-        elif "x.com" in url or "twitter.com" in url:
-          plat = "X (טוויטר)"
-        elif "youtube.com" in url or "youtu.be" in url:
-          plat = "יוטיוב"
-        else:
-          plat = "platform"
-
-        try:
-          info = ydl.extract_info(url, download=False)
-          uploader = (
-              info.get("uploader")
-              or info.get("channel")
-              or info.get("uploader_id")
-              or "לא ידוע"
-          )
-          shares = (
-              info.get("repost_count", 0)
-              or info.get("share_count", 0)
-              or 0
-          )
-          other_data.append({
-              "פלטפורמה": plat,
-              "שם משתמש": uploader,
-              "תמונה": info.get("thumbnail", ""),
-              "שם סרטון": (
-                  info.get("description")
-                  or info.get("title")
-                  or "ללא כותרת"
-              ),
-              "קישור": url,
-              "צפיות": info.get("view_count", 0) or 0,
-              "לייקים": info.get("like_count", 0) or 0,
-              "תגובות": info.get("comment_count", 0) or 0,
-              "שיתופים": shares,
-          })
-        except:
-          other_data.append({
-              "פלטפורמה": plat,
-              "שם משתמש": "שגיאה בשליפה",
-              "תמונה": "",
-              "שם סרטון": "שגיאה בשליפה",
-              "קישור": url,
-              "צפיות": 0,
-              "לייקים": 0,
-              "תגובות": 0,
-              "שיתופים": 0,
-          })
-  return other_data
-
-
-# הגדרת סרגל צד לניהול רענון
 with st.sidebar:
   st.markdown("### 🔄 ניהול ורענון נתונים")
   if st.button("רענן את כל הפלטפורמות"):
@@ -379,13 +187,12 @@ with st.sidebar:
       os.remove(CACHE_FILE)
     st.rerun()
 
-# יצירת מקומות שמורים (Placeholders) דינמיים למדדים ולטבלה
 metrics_placeholder = st.empty()
 table_placeholder = st.empty()
 
 
 def render_dashboard(df):
-  # עידכון כרטיסי המדדים
+  # עדכון מדדים בזמן אמת
   c1, c2, c3, c4 = metrics_placeholder.columns(4)
   with c1:
     st.markdown(
@@ -428,49 +235,52 @@ def render_dashboard(df):
         unsafe_allow_html=True,
     )
 
-  # בניית הטבלה
+  # טבלה עם תמיכה בשורות Skeleton או שורות אמיתיות
   t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
+
   for _, row in df.iterrows():
     plat = row["פלטפורמה"]
     user = row["שם משתמש"]
-    thumb = row["תמונה"]
-    thumb_tag = (
-        f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit:'
-        ' cover; border-radius: 4px;" />'
-        if pd.notna(thumb) and str(thumb).startswith("http")
-        else ""
-    )
     title = row["שם סרטון"]
     link = row["קישור"]
-    views = f"{int(row['צפיות']):,}"
-    likes = f"{int(row['לייקים']):,}"
-    comments = f"{int(row['תגובות']):,}"
-    shares = f"{int(row['שיתופים']):,}"
 
-    # הוספת סימון ויזואלי (אנימציית טעינה/שורה בהמתנה) אם הנתונים טרם נטענו
-    is_loading = (
-        user == "שגיאה בשליפה"
-        or user == "שגיאה בשליפת API"
-        or title == "טוען נתונים..."
-    )
-    row_style = (
-        ' style="background-color: #fef3c7; animation: pulse 1.5s infinite;"'
-        if is_loading
-        else ""
-    )
+    if title == "טוען נתונים...":
+      thumb_tag = '<div class="skeleton skeleton-box"></div>'
+      user_cell = '<div class="skeleton skeleton-text" style="width: 60%;"></div>'
+      title_cell = (
+          '<div class="skeleton skeleton-text" style="width: 85%;"></div>'
+      )
+      views, likes, comments, shares = (
+          '<div class="skeleton skeleton-text" style="width: 30px;"></div>',
+          '<div class="skeleton skeleton-text" style="width: 30px;"></div>',
+          '<div class="skeleton skeleton-text" style="width: 30px;"></div>',
+          '<div class="skeleton skeleton-text" style="width: 30px;"></div>',
+      )
+    else:
+      thumb = row["תמונה"]
+      thumb_tag = (
+          f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit:'
+          ' cover; border-radius: 4px;" />'
+          if pd.notna(thumb) and str(thumb).startswith("http")
+          else ""
+      )
+      user_cell = user
+      title_cell = (
+          f'<a href="{link}" target="_blank" class="video-link">{title}</a>'
+      )
+      views = f"{int(row['צפיות']):,}"
+      likes = f"{int(row['לייקים']):,}"
+      comments = f"{int(row['תגובות']):,}"
+      shares = f"{int(row['שיתופים']):,}"
 
-    t_html += (
-        f"<tr{row_style}><td>{plat}</td><td>{user}</td><td>{thumb_tag}</td><td><a"
-        f' href="{link}" target="_blank" class="video-link">{title}</a></td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>'
-    )
+    t_html += f"<tr><td>{plat}</td><td>{user_cell}</td><td>{thumb_tag}</td><td>{title_cell}</td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>"
+
   t_html += "</tbody></table>"
   table_placeholder.markdown(t_html, unsafe_allow_html=True)
 
 
-# --- לוגיקת טעינה הדרגתית (Progressive Loading) ---
+# --- אתחול ראשוני: כל השורות מופיעות מיד כ-Skeleton אפור ---
 all_rows = []
-
-# שלב א': יצירת שלד ראשוני לכל הלינקים (כדי שהטבלה תופיע מיד עם אנימציית טעינה)
 for url in URLS:
   if "facebook.com" in url or "fb.watch" in url:
     plat = "פייסבוק"
@@ -498,38 +308,188 @@ for url in URLS:
 current_df = pd.DataFrame(all_rows)
 render_dashboard(current_df)
 
-# שלב ב': שליפת יוטיוב, טיקטוק ו-X (yt-dlp) - הכי מהר
-with st.spinner("שולף נתונים מ-YouTube, TikTok ו-X..."):
-  ytdlp_res = fetch_ytdlp_data()
-  for item in ytdlp_res:
-    for idx, row in enumerate(all_rows):
-      if row["קישור"] == item["קישור"]:
-        all_rows[idx] = item
 
-current_df = pd.DataFrame(all_rows)
-render_dashboard(current_df)  # עדכון מיידי של המסך!
+# --- לוגיקת שליפה פדרטיבית: עדכון שורה-אחר-שורה בזמן אמת ---
 
-# שלב ג': שליפת פייסבוק
-with st.spinner("שולף נתונים מפייסבוק..."):
-  fb_res = fetch_facebook_data()
-  for item in fb_res:
-    for idx, row in enumerate(all_rows):
-      if row["קישור"] == item["קישור"]:
-        all_rows[idx] = item
 
-current_df = pd.DataFrame(all_rows)
-render_dashboard(current_df)  # עדכון מיידי נוסף של המסך!
+# 1. שליפת אינסטגרם מראש (הכנת המיפוי)
+def get_instagram_shortcode_map():
+  ig_accounts = []
+  try:
+    acc_url = f"https://graph.facebook.com/v26.0/me/accounts?fields=instagram_business_account{{id,username}},name&access_token={META_USER_TOKEN}"
+    res = requests.get(acc_url).json()
+    for page in res.get("data", []):
+      ig_acc = page.get("instagram_business_account")
+      if ig_acc:
+        ig_accounts.append({
+            "id": ig_acc.get("id"),
+            "username": ig_acc.get("username", "i24NEWS"),
+        })
+  except Exception:
+    pass
 
-# שלב ד': שליפת אינסטגרם (שלוקח הכי הרבה זמן)
-with st.spinner("שולף נתונים מאינסטגרם (עשוי לקחת מספר שניות)..."):
-  ig_res = fetch_instagram_data()
-  for item in ig_res:
-    for idx, row in enumerate(all_rows):
-      if row["קישור"] == item["קישור"]:
-        all_rows[idx] = item
+  shortcode_map = {}
+  for ig in ig_accounts:
+    ig_id = ig["id"]
+    default_uname = ig["username"]
+    next_url = f"https://graph.facebook.com/v26.0/{ig_id}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
+    page_count = 0
+    while next_url and page_count < 5:
+      try:
+        media_res = requests.get(next_url).json()
+        for post in media_res.get("data", []):
+          p_link = post.get("permalink", "")
+          sc_match = re.search(r"/(?:p|reel)/([^/]+)", p_link)
+          if sc_match:
+            shortcode_map[sc_match.group(1)] = {
+                "username": default_uname,
+                "caption": post.get("caption") or "ללא כותרת",
+                "thumbnail_url": post.get("thumbnail_url", ""),
+                "views": post.get("total_views_count", 0) or 0,
+                "likes": post.get("total_like_count", 0) or 0,
+                "comments": post.get("total_comments_count", 0) or 0,
+                "shares": post.get("shares_count", 0) or 0,
+            }
+        next_url = media_res.get("paging", {}).get("next")
+        page_count += 1
+      except Exception:
+        break
+  return shortcode_map
 
-current_df = pd.DataFrame(all_rows)
-render_dashboard(current_df)  # סיום טעינה מלאה!
 
-# שמירה בקובץ מטמון בסיום התהליך
+ig_map = get_instagram_shortcode_map()
+
+# 2. מעבר לינק-לינק: שולפים ומעדכנים את המסך **מיד** עבור כל שורה בודדת!
+with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
+  for idx, row in enumerate(all_rows):
+    url = row["קישור"]
+    updated_item = None
+
+    if "facebook.com" in url or "fb.watch" in url:
+      match = re.search(r"/(?:reel|videos|posts)/(\d+)", url)
+      fb_id = match.group(1) if match else None
+      if fb_id:
+        api_url = f"https://graph.facebook.com/v26.0/{fb_id}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}"
+        try:
+          res = requests.get(api_url).json()
+          if "error" not in res:
+            desc = res.get("description") or "ללא כותרת"
+            views = res.get("views", 0) or 0
+            username = res.get("from", {}).get("name", "i24NEWS")
+            picture = res.get("picture", "")
+            likes, comments, shares = 0, 0, 0
+            for insight in res.get("video_insights", {}).get("data", []):
+              m_name = insight.get("name")
+              values = insight.get("values", [{}])[0].get("value", {})
+              if m_name == "post_video_likes_by_reaction_type":
+                likes = sum(values.values())
+              elif m_name == "post_video_social_actions":
+                comments = values.get("COMMENT", 0)
+                shares = values.get("SHARE", 0)
+            updated_item = {
+                "פלטפורמה": "פייסבוק",
+                "שם משתמש": username,
+                "תמונה": picture,
+                "שם סרטון": desc,
+                "קישור": url,
+                "צפיות": views,
+                "לייקים": likes,
+                "תגובות": comments,
+                "שיתופים": shares,
+            }
+        except Exception:
+          pass
+      if not updated_item:
+        updated_item = {
+            "פלטפורמה": "פייסבוק",
+            "שם משתמש": "i24NEWS",
+            "תמונה": "",
+            "שם סרטון": "שגיאה בשליפת API",
+            "קישור": url,
+            "צפיות": 0,
+            "לייקים": 0,
+            "תגובות": 0,
+            "שיתופים": 0,
+        }
+
+    elif "instagram.com" in url:
+      sc_match = re.search(r"/(?:p|reel)/([^/]+)", url)
+      target_code = sc_match.group(1) if sc_match else None
+      matched = ig_map.get(target_code) if target_code else None
+      if matched:
+        updated_item = {
+            "פלטפורמה": "אינסטגרם",
+            "שם משתמש": matched["username"],
+            "תמונה": matched["thumbnail_url"],
+            "שם סרטון": matched["caption"],
+            "קישור": url,
+            "צפיות": matched["views"],
+            "לייקים": matched["likes"],
+            "תגובות": matched["comments"],
+            "שיתופים": matched["shares"],
+        }
+      else:
+        updated_item = {
+            "פלטפורמה": "אינסטגרם",
+            "שם משתמש": "i24NEWS",
+            "תמונה": "",
+            "שם סרטון": "לא נמצא בפיד המקושר",
+            "קישור": url,
+            "צפיות": 0,
+            "לייקים": 0,
+            "תגובות": 0,
+            "שיתופים": 0,
+        }
+
+    else:
+      if "tiktok.com" in url:
+        plat = "טיקטוק"
+      elif "x.com" in url or "twitter.com" in url:
+        plat = "X (טוויטר)"
+      elif "youtube.com" in url or "youtu.be" in url:
+        plat = "יוטיוב"
+      else:
+        plat = "אחר"
+
+      try:
+        info = ydl.extract_info(url, download=False)
+        uploader = (
+            info.get("uploader")
+            or info.get("channel")
+            or info.get("uploader_id")
+            or "לא ידוע"
+        )
+        shares = info.get("repost_count", 0) or info.get("share_count", 0) or 0
+        updated_item = {
+            "פלטפורמה": plat,
+            "שם משתמש": uploader,
+            "תמונה": info.get("thumbnail", ""),
+            "שם סרטון": (
+                info.get("description") or info.get("title") or "ללא כותרת"
+            ),
+            "קישור": url,
+            "צפיות": info.get("view_count", 0) or 0,
+            "לייקים": info.get("like_count", 0) or 0,
+            "תגובות": info.get("comment_count", 0) or 0,
+            "שיתופים": shares,
+        }
+      except Exception:
+        updated_item = {
+            "פלטפורמה": plat,
+            "שם משתמש": "שגיאה בשליפה",
+            "תמונה": "",
+            "שם סרטון": "שגיאה בשליפה",
+            "קישור": url,
+            "צפיות": 0,
+            "לייקים": 0,
+            "תגובות": 0,
+            "שיתופים": 0,
+        }
+
+    # עדכון השורה הספציפית במערך ורינדור מחדש **מיד**
+    all_rows[idx] = updated_item
+    current_df = pd.DataFrame(all_rows)
+    render_dashboard(current_df)
+
+# שמירה סופית בקובץ מטמון כשהכל הסתיים
 current_df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
