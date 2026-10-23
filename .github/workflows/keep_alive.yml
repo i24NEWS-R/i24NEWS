@@ -1,0 +1,43 @@
+name: Keep Streamlit App Alive
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-streamlit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Ping and Wake Streamlit
+        env:
+          STREAMLIT_URL: ${{ secrets.STREAMLIT_URL }}
+        run: |
+          python -c "
+          import os, requests
+          
+          url = os.environ.get('STREAMLIT_URL')
+          if not url:
+              print('Error: STREAMLIT_URL secret is missing!')
+              exit(1)
+              
+          print(f'Pinging {url}...')
+          try:
+              response = requests.get(url, timeout=30)
+              print(f'Status Code: {response.status_code}')
+          except Exception as e:
+              print(f'Error pinging site: {e}')
+          "
