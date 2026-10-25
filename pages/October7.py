@@ -13,7 +13,7 @@ st.markdown("""
     .metric-card { background-color: #f8f9fa; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; }
     .metric-title { font-size: 0.95rem; color: #64748b; margin-bottom: 8px; font-weight: 600; text-align: center; }
     .metric-value { font-size: 1.8rem; font-weight: 700; color: #0f172a; text-align: center; }
-    .custom-table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .custom-table { width: 100%; border-collapse: collapse; margin-top: 10px; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .custom-table th { background-color: #f1f5f9; color: #334155; padding: 12px 16px; text-align: center !important; font-weight: 600; font-size: 0.9rem; border-bottom: 2px solid #e2e8f0; }
     .custom-table td { padding: 12px 16px; text-align: center !important; vertical-align: middle !important; color: #475569; font-size: 0.9rem; border-bottom: 1px solid #f1f5f9; }
     .custom-table tr:hover { background-color: #f8fafc; }
@@ -77,12 +77,13 @@ with st.sidebar:
 
 if refresh_all and os.path.exists(CACHE_FILE): os.remove(CACHE_FILE)
 
-metrics_placeholder, table_placeholder = st.empty(), st.empty()
+metrics_placeholder, controls_placeholder, table_placeholder = st.empty(), st.empty(), st.empty()
 
 def render_dashboard(df):
     cols = metrics_placeholder.columns(4)
     for col, title, key in zip(cols, ["סך הכל צפיות", "סך הכל לייקים", "סך הכל תגובות", "סך הכל שיתופים"], ["צפיות", "לייקים", "תגובות", "שיתופים"]):
-        col.markdown(f'<div class="metric-card"><div class="metric-title">{title}</div><div class="metric-value">{int(df[key].sum()):,}</div></div>', unsafe_allow_html=True)
+        numeric_vals = pd.to_numeric(df[key], errors="coerce").fillna(0)
+        col.markdown(f'<div class="metric-card"><div class="metric-title">{title}</div><div class="metric-value">{int(numeric_vals.sum()):,}</div></div>', unsafe_allow_html=True)
     
     t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
     
@@ -105,7 +106,10 @@ def render_dashboard(df):
             thumb = row["תמונה"]
             thumb_tag = f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;" />' if pd.notna(thumb) and str(thumb).startswith("http") else ""
             user_cell, title_cell = user, f'<a href="{link}" target="_blank" class="video-link">{title}</a>'
-            views, likes, comments, shares = f"{int(row['צפיות']):,}", f"{int(row['לייקים']):,}", f"{int(row['תגובות']):,}", f"{int(row['שיתופים']):,}"
+            views = f"{int(pd.to_numeric(row['צפיות'], errors='coerce') or 0):,}"
+            likes = f"{int(pd.to_numeric(row['לייקים'], errors='coerce') or 0):,}"
+            comments = f"{int(pd.to_numeric(row['תגובות'], errors='coerce') or 0):,}"
+            shares = f"{int(pd.to_numeric(row['שיתופים'], errors='coerce') or 0):,}"
         t_html += f"<tr><td>{plat_display}</td><td>{user_cell}</td><td>{thumb_tag}</td><td>{title_cell}</td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>"
     table_placeholder.markdown(t_html + "</tbody></table>", unsafe_allow_html=True)
 
@@ -123,6 +127,21 @@ for item in ITEMS:
     all_rows.append({"פלטפורמה": item["platform"], "שם משתמש": "טוען...", "תמונה": "", "שם סרטון": "טוען נתונים...", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0})
 
 current_df = pd.DataFrame(all_rows)
+
+# הוספת פקדי מיון מעל הטבלה
+c_col1, c_col2 = controls_placeholder.columns([3, 1])
+with c_col1:
+    sort_by = st.selectbox("מיון לפי עמודה:", ["צפיות", "לייקים", "תגובות", "שיתופים", "פלטפורמה", "שם משתמש"], index=0, key="sort_column_select")
+with c_col2:
+    sort_ascending = st.checkbox("סדר עולה (Ascending)", value=False, key="sort_ascending_checkbox")
+
+# המרת עמודות מספריות לצורך מיון נכון
+for col in ["צפיות", "לייקים", "תגובות", "שיתופים"]:
+    current_df[col] = pd.to_numeric(current_df[col], errors="coerce").fillna(0)
+
+# ביצוע המיון
+current_df = current_df.sort_values(by=sort_by, ascending=sort_ascending)
+
 render_dashboard(current_df)
 
 if df_cached is not None and not any_refresh: st.stop()
@@ -181,6 +200,9 @@ with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
 
         all_rows[idx] = updated
         current_df = pd.DataFrame(all_rows)
+        for col in ["צפיות", "לייקים", "תגובות", "שיתופים"]:
+            current_df[col] = pd.to_numeric(current_df[col], errors="coerce").fillna(0)
+        current_df = current_df.sort_values(by=sort_by, ascending=sort_ascending)
         render_dashboard(current_df)
 
 current_df.to_csv(CACHE_FILE, index=False, encoding="utf-8-sig")
