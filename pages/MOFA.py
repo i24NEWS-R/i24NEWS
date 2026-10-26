@@ -1,5 +1,6 @@
 import os, re
 import datetime
+import io
 import pandas as pd
 import requests
 import streamlit as st
@@ -47,7 +48,7 @@ with st.sidebar:
     ids_input = st.text_area("הזן נתונים לפי ההנחיות:", height=220, placeholder=placeholder_text)
     fetch_btn = st.button("שלוף נתונים", use_container_width=True, type="primary")
     
-    # אזור ייצוא ל-CSV (יופיע בסיידבר)
+    # אזור ייצוא לקובץ Excel (יופיע בסיידבר)
     download_placeholder = st.empty()
 
 def get_full_url(plat, line):
@@ -273,12 +274,16 @@ else:
 
         st.success("השליפה הסתיימה בהצלחה!")
         
-        # הצגת כפתור ההורדה בסיידבר לאחר סיום השליפה
-        csv_data = current_df.to_csv(index=False, encoding="utf-8-sig")
+        # יצירת קובץ Excel בזיכרון והצגת כפתור הורדה
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            current_df.to_excel(writer, index=False, sheet_name='MOFA Data')
+        excel_data = buffer.getvalue()
+
         download_placeholder.download_button(
-            label="📥 ייצא טבלה ל-CSV",
-            data=csv_data,
-            file_name="mofa_extracted_data.csv",
-            mime="text/csv",
+            label="📥 ייצא קובץ Excel",
+            data=excel_data,
+            file_name="mofa_extracted_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
