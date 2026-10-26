@@ -46,6 +46,9 @@ with st.sidebar:
 
     ids_input = st.text_area("הזן נתונים לפי ההנחיות:", height=220, placeholder=placeholder_text)
     fetch_btn = st.button("שלוף נתונים", use_container_width=True, type="primary")
+    
+    # אזור ייצוא ל-CSV (יופיע בסיידבר)
+    download_placeholder = st.empty()
 
 def get_full_url(plat, line):
     line = line.strip()
@@ -62,12 +65,27 @@ def get_full_url(plat, line):
 def format_date(date_str):
     if not date_str:
         return ""
-    if "T" in str(date_str):
-        return str(date_str).split("T")[0]
-    str_d = str(date_str)
-    if len(str_d) == 8 and str_d.isdigit():
-        return f"{str_d[:4]}-{str_d[4:6]}-{str_d[6:]}"
-    return str_d
+    try:
+        s = str(date_str)
+        if "T" in s:
+            s = s.split("T")[0]
+        
+        if "-" in s and len(s) >= 10:
+            parts = s[:10].split("-")
+            if len(parts) == 3:
+                y, m, d = parts
+                return f"{d}/{m}/{y}"
+        
+        if len(s) == 8 and s.isdigit():
+            y, m, d = s[:4], s[4:6], s[6:]
+            return f"{d}/{m}/{y}"
+            
+        dt = pd.to_datetime(date_str, errors='coerce')
+        if pd.notna(dt):
+            return dt.strftime("%d/%m/%Y")
+    except:
+        pass
+    return str(date_str)
 
 def get_ig_map():
     if not META_USER_TOKEN: return {}
@@ -254,3 +272,13 @@ else:
                 render_dashboard(current_df)
 
         st.success("השליפה הסתיימה בהצלחה!")
+        
+        # הצגת כפתור ההורדה בסיידבר לאחר סיום השליפה
+        csv_data = current_df.to_csv(index=False, encoding="utf-8-sig")
+        download_placeholder.download_button(
+            label="📥 ייצא טבלה ל-CSV",
+            data=csv_data,
+            file_name="mofa_extracted_data.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
