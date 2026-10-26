@@ -28,29 +28,37 @@ st.markdown("""
 
 st.markdown('<div class="main-title">MOFA - Social Media Data Extraction Tool</div>', unsafe_allow_html=True)
 
-# שליפת הטוקן מתוך st.secrets (וודא שהוא מוגדר ב-secrets.toml)
 META_USER_TOKEN = st.secrets.get("META_USER_TOKEN", "")
 
 with st.sidebar:
     st.markdown("### ⚙️ הגדרות שליפה")
     platform = st.selectbox("בחר פלטפורמה:", ["יוטיוב", "טיקטוק", "טוויטר", "פייסבוק", "אינסטגרם"])
     
-    username = ""
-    if platform in ["טיקטוק", "טוויטר"]:
-        username = st.text_input("שם משתמש (Username):", value="i24news_en", help="נדרש לבניית הקישור לפלטפורמה זו")
-    
     st.markdown("---")
-    ids_input = st.text_area("הכנס רשימת ID (כל שורה ID חדש):", height=220, placeholder="ID1\nID2\nID3")
+    
+    # הצגת הודעה מותאמת אישית לפי הפלטפורמה שנבחרה
+    if platform in ["טיקטוק", "טוויטר"]:
+        st.warning("⚠️ **הכנס לינקים מלאים כולל שם משתמש ואכניס** (כל שורה לינק מלא).")
+        placeholder_text = "https://www.tiktok.com/@username/video/123456...\nhttps://www.tiktok.com/@another_user/video/78910..."
+    else:
+        st.info("ℹ️ הכנס מזהי ID בלבד (כל שורה ID חדש).")
+        placeholder_text = "ID1\nID2\nID3"
+
+    ids_input = st.text_area("הזן נתונים לפי ההנחיות:", height=220, placeholder=placeholder_text)
     fetch_btn = st.button("שלוף נתונים", use_container_width=True, type="primary")
 
-def get_full_url(plat, i, user=""):
-    return {
-        "יוטיוב": f"https://youtube.com/shorts/{i}",
-        "טיקטוק": f"https://www.tiktok.com/@{user}/video/{i}",
-        "טוויטר": f"https://x.com/{user}/status/{i}",
-        "פייסבוק": f"https://www.facebook.com/reel/{i}",
-        "אינסטגרם": f"https://www.instagram.com/p/{i}"
-    }.get(plat, "")
+def get_full_url(plat, line):
+    line = line.strip()
+    if plat == "יוטיוב":
+        return f"https://youtube.com/shorts/{line}"
+    elif plat == "פייסבוק":
+        return f"https://www.facebook.com/reel/{line}"
+    elif plat == "אינסטגרם":
+        return f"https://www.instagram.com/p/{line}"
+    elif plat in ["טיקטוק", "טוויטר"]:
+        # בטיקטוק וטוויטר המשתמש מכניס ישירות את הלינק המלא
+        return line
+    return line
 
 def get_ig_map():
     if not META_USER_TOKEN: return {}
@@ -122,22 +130,20 @@ def render_dashboard(df):
     
     table_placeholder.markdown(t_html + "</tbody></table>", unsafe_allow_html=True)
 
-# מצב התחלתי לפני לחיצה
 if not fetch_btn:
-    st.info("👈 בחר פלטפורמה בסיידבר, הדבק רשימת ID ולץ על **שלוף נתונים**.")
+    st.info("👈 בחר פלטפורמה בסיידבר, הזן את הנתונים ולץ על **שלוף נתונים**.")
 else:
-    id_list = [line.strip() for line in ids_input.splitlines() if line.strip()]
+    raw_lines = [line.strip() for line in ids_input.splitlines() if line.strip()]
     
-    if not id_list:
-        st.warning("נא להזין לפחות ID אחד בתיבת הטקסט.")
+    if not raw_lines:
+        st.warning("נא להזין לפחות ערך אחד בתיבת הטקסט.")
     else:
-        # אתחול שורות במצב טעינה
         all_rows = []
-        for item_id in id_list:
-            url = get_full_url(platform, item_id, username)
+        for line in raw_lines:
+            url = get_full_url(platform, line)
             all_rows.append({
                 "פלטפורמה": platform,
-                "שם משתמש": username if username else "i24NEWS",
+                "שם משתמש": "טוען...",
                 "תמונה": "",
                 "שם סרטון": "טוען נתונים...",
                 "קישור": url,
@@ -147,17 +153,16 @@ else:
         current_df = pd.DataFrame(all_rows)
         render_dashboard(current_df)
 
-        # שליפת אינסטגרם מראש אם נבחר
         ig_map = get_ig_map() if platform == "אינסטגרם" else {}
 
         with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
-            for idx, item_id in enumerate(id_list):
-                url = get_full_url(platform, item_id, username)
+            for idx, line in enumerate(raw_lines):
+                url = get_full_url(platform, line)
                 updated = None
 
                 if platform == "פייסבוק":
                     try:
-                        res = requests.get(f"https://graph.facebook.com/v26.0/{item_id}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}").json()
+                        res = requests.get(f"https://graph.facebook.com/v26.0/{line}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}").json()
                         if "error" not in res:
                             likes, comments, shares = 0, 0, 0
                             for ins in res.get("video_insights", {}).get("data", []):
@@ -170,7 +175,7 @@ else:
                         updated = {"פלטפורמה": "פייסבוק", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "שגיאה בשליפת API", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
                 
                 elif platform == "אינסטגרם":
-                    matched = ig_map.get(item_id)
+                    matched = ig_map.get(line)
                     if matched:
                         updated = {"פלטפורמה": "אינסטגרם", "שם משתמש": matched["username"], "תמונה": matched["thumbnail_url"], "שם סרטון": matched["caption"], "קישור": url, "צפיות": matched["views"], "לייקים": matched["likes"], "תגובות": matched["comments"], "שיתופים": matched["shares"]}
                     else:
@@ -181,7 +186,7 @@ else:
                         info = ydl.extract_info(url, download=False)
                         updated = {
                             "פלטפורמה": platform,
-                            "שם משתמש": info.get("uploader") or info.get("channel") or info.get("uploader_id") or (username if username else "לא ידוע"),
+                            "שם משתמש": info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע",
                             "תמונה": info.get("thumbnail", ""),
                             "שם סרטון": info.get("description") or info.get("title") or "ללא כותרת",
                             "קישור": url,
@@ -193,7 +198,7 @@ else:
                     except:
                         updated = {
                             "פלטפורמה": platform,
-                            "שם משתמש": username if username else "שגיאה בשליפה",
+                            "שם משתמש": "שגיאה בשליפה",
                             "תמונה": "",
                             "שם סרטון": "שגיאה בשליפה",
                             "קישור": url,
