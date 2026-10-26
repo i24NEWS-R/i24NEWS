@@ -1,4 +1,5 @@
 import os, re
+import datetime
 import pandas as pd
 import requests
 import streamlit as st
@@ -36,7 +37,6 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # הצגת הודעה מותאמת אישית לפי הפלטפורמה שנבחרה
     if platform in ["טיקטוק", "טוויטר"]:
         st.warning("⚠️ **הכנס לינקים מלאים כולל שם משתמש ואכניס** (כל שורה לינק מלא).")
         placeholder_text = "https://www.tiktok.com/@username/video/123456...\nhttps://www.tiktok.com/@another_user/video/78910..."
@@ -56,9 +56,18 @@ def get_full_url(plat, line):
     elif plat == "אינסטגרם":
         return f"https://www.instagram.com/p/{line}"
     elif plat in ["טיקטוק", "טוויטר"]:
-        # בטיקטוק וטוויטר המשתמש מכניס ישירות את הלינק המלא
         return line
     return line
+
+def format_date(date_str):
+    if not date_str:
+        return ""
+    if "T" in str(date_str):
+        return str(date_str).split("T")[0]
+    str_d = str(date_str)
+    if len(str_d) == 8 and str_d.isdigit():
+        return f"{str_d[:4]}-{str_d[4:6]}-{str_d[6:]}"
+    return str_d
 
 def get_ig_map():
     if not META_USER_TOKEN: return {}
@@ -69,7 +78,7 @@ def get_ig_map():
     
     sc_map = {}
     for ig in ig_accounts:
-        next_url = f"https://graph.facebook.com/v26.0/{ig['id']}/media?fields=id,permalink,caption,thumbnail_url,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
+        next_url = f"https://graph.facebook.com/v26.0/{ig['id']}/media?fields=id,permalink,caption,thumbnail_url,timestamp,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
         for _ in range(5):
             if not next_url: break
             try:
@@ -81,6 +90,7 @@ def get_ig_map():
                             "username": ig["username"], 
                             "caption": post.get("caption") or "ללא כותרת", 
                             "thumbnail_url": post.get("thumbnail_url", ""), 
+                            "date": format_date(post.get("timestamp", "")),
                             "views": post.get("total_views_count", 0) or 0, 
                             "likes": post.get("total_like_count", 0) or 0, 
                             "comments": post.get("total_comments_count", 0) or 0, 
@@ -98,7 +108,7 @@ def render_dashboard(df):
         numeric_vals = pd.to_numeric(df[key], errors="coerce").fillna(0)
         col.markdown(f'<div class="metric-card"><div class="metric-title">{title}</div><div class="metric-value">{int(numeric_vals.sum()):,}</div></div>', unsafe_allow_html=True)
     
-    t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 54%;">שם סרטון</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
+    t_html = '<table class="custom-table"><thead><tr><th style="width: 8%;">פלטפורמה</th><th style="width: 12%;">שם משתמש</th><th style="width: 6%;">תמונה</th><th style="width: 44%;">שם סרטון</th><th style="width: 10%;">תאריך פרסום</th><th style="width: 5%;">צפיות</th><th style="width: 5%;">לייקים</th><th style="width: 5%;">תגובות</th><th style="width: 5%;">שיתופים</th></tr></thead><tbody>'
     
     icon_mapping = {
         "יוטיוב": '<div style="text-align: center;"><i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">יוטיוב</span></div>',
@@ -109,24 +119,26 @@ def render_dashboard(df):
     }
 
     for _, row in df.iterrows():
-        plat, user, title, link = row["פלטפורמה"], row["שם משתמש"], row["שם סרטון"], row["קישור"]
+        plat, user, title, link, date_val = row["פלטפורמה"], row["שם משתמש"], row["שם סרטון"], row["קישור"], row["תאריך"]
         plat_display = icon_mapping.get(plat, f'<div style="text-align: center;">{plat}</div>')
         
         if title == "טוען נתונים...":
             thumb_tag = '<div class="skeleton skeleton-box"></div>'
             user_cell = '<div class="skeleton skeleton-text" style="width: 60%;"></div>'
             title_cell = '<div class="skeleton skeleton-text" style="width: 85%;"></div>'
+            date_cell = '<div class="skeleton skeleton-text" style="width: 60%;"></div>'
             views, likes, comments, shares = *(['<div class="skeleton skeleton-text" style="width: 30px;"></div>'] * 4),
         else:
             thumb = row["תמונה"]
             thumb_tag = f'<img src="{thumb}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;" />' if pd.notna(thumb) and str(thumb).startswith("http") else ""
             user_cell, title_cell = user, f'<a href="{link}" target="_blank" class="video-link">{title}</a>'
+            date_cell = date_val if pd.notna(date_val) else ""
             views = f"{int(pd.to_numeric(row['צפיות'], errors='coerce') or 0):,}"
             likes = f"{int(pd.to_numeric(row['לייקים'], errors='coerce') or 0):,}"
             comments = f"{int(pd.to_numeric(row['תגובות'], errors='coerce') or 0):,}"
             shares = f"{int(pd.to_numeric(row['שיתופים'], errors='coerce') or 0):,}"
         
-        t_html += f"<tr><td>{plat_display}</td><td>{user_cell}</td><td>{thumb_tag}</td><td>{title_cell}</td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>"
+        t_html += f"<tr><td>{plat_display}</td><td>{user_cell}</td><td>{thumb_tag}</td><td>{title_cell}</td><td>{date_cell}</td><td>{views}</td><td>{likes}</td><td>{comments}</td><td>{shares}</td></tr>"
     
     table_placeholder.markdown(t_html + "</tbody></table>", unsafe_allow_html=True)
 
@@ -146,6 +158,7 @@ else:
                 "שם משתמש": "טוען...",
                 "תמונה": "",
                 "שם סרטון": "טוען נתונים...",
+                "תאריך": "",
                 "קישור": url,
                 "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
             })
@@ -162,33 +175,61 @@ else:
 
                 if platform == "פייסבוק":
                     try:
-                        res = requests.get(f"https://graph.facebook.com/v26.0/{line}?fields=description,views,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}").json()
+                        res = requests.get(f"https://graph.facebook.com/v26.0/{line}?fields=description,views,created_time,from%7Bname%7D,picture,video_insights.metric(post_video_likes_by_reaction_type,post_video_social_actions)&access_token={META_USER_TOKEN}").json()
                         if "error" not in res:
                             likes, comments, shares = 0, 0, 0
                             for ins in res.get("video_insights", {}).get("data", []):
                                 vals = ins.get("values", [{}])[0].get("value", {})
                                 if ins.get("name") == "post_video_likes_by_reaction_type": likes = sum(vals.values())
                                 elif ins.get("name") == "post_video_social_actions": comments, shares = vals.get("COMMENT", 0), vals.get("SHARE", 0)
-                            updated = {"פלטפורמה": "פייסבוק", "שם משתמש": res.get("from", {}).get("name", "i24NEWS"), "תמונה": res.get("picture", ""), "שם סרטון": res.get("description") or "ללא כותרת", "קישור": url, "צפיות": res.get("views", 0) or 0, "לייקים": likes, "תגובות": comments, "שיתופים": shares}
+                            
+                            updated = {
+                                "פלטפורמה": "פייסבוק", 
+                                "שם משתמש": res.get("from", {}).get("name", "i24NEWS"), 
+                                "תמונה": res.get("picture", ""), 
+                                "שם סרטון": res.get("description") or "ללא כותרת", 
+                                "תאריך": format_date(res.get("created_time", "")),
+                                "קישור": url, 
+                                "צפיות": res.get("views", 0) or 0, 
+                                "לייקים": likes, 
+                                "תגובות": comments, 
+                                "שיתופים": shares
+                            }
                         else: raise Exception()
                     except:
-                        updated = {"פלטפורמה": "פייסבוק", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "שגיאה בשליפת API", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
+                        updated = {"פלטפורמה": "פייסבוק", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "שגיאה בשליפת API", "תאריך": "", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
                 
                 elif platform == "אינסטגרם":
                     matched = ig_map.get(line)
                     if matched:
-                        updated = {"פלטפורמה": "אינסטגרם", "שם משתמש": matched["username"], "תמונה": matched["thumbnail_url"], "שם סרטון": matched["caption"], "קישור": url, "צפיות": matched["views"], "לייקים": matched["likes"], "תגובות": matched["comments"], "שיתופים": matched["shares"]}
+                        updated = {
+                            "פלטפורמה": "אינסטגרם", 
+                            "שם משתמש": matched["username"], 
+                            "תמונה": matched["thumbnail_url"], 
+                            "שם סרטון": matched["caption"], 
+                            "תאריך": matched["date"],
+                            "קישור": url, 
+                            "צפיות": matched["views"], 
+                            "לייקים": matched["likes"], 
+                            "תגובות": matched["comments"], 
+                            "שיתופים": matched["shares"]
+                        }
                     else:
-                        updated = {"פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "לא נמצא בפיד המקושר", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
+                        updated = {"פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "לא נמצא בפיד המקושר", "תאריך": "", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
                 
                 else:
                     try:
                         info = ydl.extract_info(url, download=False)
+                        raw_date = info.get("upload_date") or info.get("release_date") or ""
+                        if not raw_date and info.get("timestamp"):
+                            raw_date = datetime.datetime.fromtimestamp(info.get("timestamp")).strftime("%Y%m%d")
+
                         updated = {
                             "פלטפורמה": platform,
                             "שם משתמש": info.get("uploader") or info.get("channel") or info.get("uploader_id") or "לא ידוע",
                             "תמונה": info.get("thumbnail", ""),
                             "שם סרטון": info.get("description") or info.get("title") or "ללא כותרת",
+                            "תאריך": format_date(raw_date),
                             "קישור": url,
                             "צפיות": info.get("view_count", 0) or 0,
                             "לייקים": info.get("like_count", 0) or 0,
@@ -201,6 +242,7 @@ else:
                             "שם משתמש": "שגיאה בשליפה",
                             "תמונה": "",
                             "שם סרטון": "שגיאה בשליפה",
+                            "תאריך": "",
                             "קישור": url,
                             "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0
                         }
