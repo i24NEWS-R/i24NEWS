@@ -36,6 +36,12 @@ with st.sidebar:
     st.markdown("### ⚙️ הגדרות שליפה")
     platform = st.selectbox("בחר פלטפורמה:", ["יוטיוב", "טיקטוק", "טוויטר", "פייסבוק", "אינסטגרם"])
     
+    # במידה ונבחרה אינסטגרם, מציגים בורר תאריך התחלה חכם
+    ig_start_date = None
+    if platform == "אינסטגרם":
+        st.markdown("---")
+        ig_start_date = st.date_input("📅 שלוף פוסטים מתאריך (כולל):", value=datetime.date(datetime.date.today().year, 5, 10))
+    
     st.markdown("---")
     
     if platform in ["טיקטוק", "טוויטר"]:
@@ -48,7 +54,6 @@ with st.sidebar:
     ids_input = st.text_area("הזן נתונים לפי ההנחיות:", height=220, placeholder=placeholder_text)
     fetch_btn = st.button("שלוף נתונים", use_container_width=True, type="primary")
     
-    # אזור ייצוא לקובץ Excel (יופיע בסיידבר)
     download_placeholder = st.empty()
 
 def get_full_url(plat, line):
@@ -88,7 +93,7 @@ def format_date(date_str):
         pass
     return str(date_str)
 
-def get_ig_map():
+def get_ig_map(target_date):
     if not META_USER_TOKEN: return {}
     try:
         res = requests.get(f"https://graph.facebook.com/v26.0/me/accounts?fields=instagram_business_account{{id,username}},name&access_token={META_USER_TOKEN}").json()
@@ -98,25 +103,49 @@ def get_ig_map():
     sc_map = {}
     for ig in ig_accounts:
         next_url = f"https://graph.facebook.com/v26.0/{ig['id']}/media?fields=id,permalink,caption,thumbnail_url,timestamp,total_views_count,total_like_count,total_comments_count,shares_count&limit=100&access_token={META_USER_TOKEN}"
-        for _ in range(5):
-            if not next_url: break
+        
+        stop_fetching = False
+        while next_url and not stop_fetching:
             try:
                 m_res = requests.get(next_url).json()
-                for post in m_res.get("data", []):
-                    m = re.search(r"/(?:p|reel)/([^/]+)", post.get("permalink", ""))
-                    if m: 
-                        sc_map[m.group(1)] = {
-                            "username": ig["username"], 
-                            "caption": post.get("caption") or "ללא כותרת", 
-                            "thumbnail_url": post.get("thumbnail_url", ""), 
-                            "date": format_date(post.get("timestamp", "")),
-                            "views": post.get("total_views_count", 0) or 0, 
-                            "likes": post.get("total_like_count", 0) or 0, 
-                            "comments": post.get("total_comments_count", 0) or 0, 
-                            "shares": post.get("shares_count", 0) or 0
-                        }
+                posts = m_res.get("data", [])
+                if not posts: break
+                
+                for post in posts:
+                    ts_str = post.get("timestamp", "")
+                    post_date = None
+                    if ts_str:
+                        try:
+                            post_date = pd.to_datetime(ts_str).date()
+                        except:
+                            pass
+                    
+                    # אם הגענו לפוסט ישן יותר מתאריך היעד, נעצור את השליפה כי הפיד מסודר מהחדש לישן
+                    if target_date and post_date and post_date < target_date:
+                        stop_fetching = True
+                        break
+                    
+                    # שומרים רק אם התאריך תואם או שאין הגבלת תאריך
+                    if not target_date or (post_date and post_date >= target_date):
+                        m = re.search(r"/(?:p|reel)/([^/]+)", post.get("permalink", ""))
+                        if m: 
+                            sc_map[m.group(1)] = {
+                                "username": ig["username"], 
+                                "caption": post.get("caption") or "ללא כותרת", 
+                                "thumbnail_url": post.get("thumbnail_url", ""), 
+                                "date": format_date(ts_str),
+                                "views": post.get("total_views_count", 0) or 0, 
+                                "likes": post.get("total_like_count", 0) or 0, 
+                                "comments": post.get("total_comments_count", 0) or 0, 
+                                "shares": post.get("shares_count", 0) or 0
+                            }
+                
+                if stop_fetching:
+                    break
+                    
                 next_url = m_res.get("paging", {}).get("next")
-            except: break
+            except:
+                break
     return sc_map
 
 metrics_placeholder, table_placeholder = st.empty(), st.empty()
@@ -185,7 +214,7 @@ else:
         current_df = pd.DataFrame(all_rows)
         render_dashboard(current_df)
 
-        ig_map = get_ig_map() if platform == "אינסטגרם" else {}
+        ig_map = get_ig_map(ig_start_date) if platform == "אינסטגרם" else {}
 
         with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True}) as ydl:
             for idx, line in enumerate(raw_lines):
@@ -234,7 +263,7 @@ else:
                             "שיתופים": matched["shares"]
                         }
                     else:
-                        updated = {"פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "לא נמצא בפיד המקושר", "תאריך": "", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
+                        updated = {"פלטפורמה": "אינסטגרם", "שם משתמש": "i24NEWS", "תמונה": "", "שם סרטון": "לא נמצא (ייתכן וישן ממועד ההתחלה)", "תאריך": "", "קישור": url, "צפיות": 0, "לייקים": 0, "תגובות": 0, "שיתופים": 0}
                 
                 else:
                     try:
@@ -274,7 +303,6 @@ else:
 
         st.success("השליפה הסתיימה בהצלחה!")
         
-        # יצירת קובץ Excel בזיכרון והצגת כפתור הורדה
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             current_df.to_excel(writer, index=False, sheet_name='MOFA Data')
