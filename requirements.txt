@@ -3,3 +3,6 @@ pandas
 plotly
 openpyxl
 yt-dlp
+geopandas
+shapely
+folium
