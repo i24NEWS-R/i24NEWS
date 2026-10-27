@@ -3,6 +3,7 @@ import geopandas as gpd
 import pandas as pd
 import plotly.express as px
 import requests
+import json
 from shapely.geometry import Polygon
 
 st.set_page_config(page_title="מפת בחירות היררכית בישראל", layout="wide")
@@ -35,7 +36,6 @@ PARTY_COLORS = {
 # ---------------------------------------------------------
 @st.cache_data
 def load_fallback_geojson():
-    # נסיון הורדה מ-URL
     url = "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
@@ -44,11 +44,15 @@ def load_fallback_geojson():
             geojson_data = res.json()
             gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
             gdf.crs = "EPSG:4326"
+            
+            # הגדרת ID מפורש לכל פוליגון ב-GeoJSON
+            for idx, feature in enumerate(geojson_data['features']):
+                feature['id'] = str(idx)
             return geojson_data, gdf
     except Exception:
         pass
 
-    # במידה וההורדה נכשלה - יצירת 6 אגנים/מחוזות גיאוגרפיים מובנים בקוד למניעת קריסה
+    # במידה וההורדה נכשלה - יצירת 6 מחוזות גיאוגרפיים מובנים בקוד
     poly_north = Polygon([(35.0, 33.3), (35.6, 33.3), (35.6, 32.6), (35.0, 32.6)])
     poly_haifa = Polygon([(34.9, 32.6), (35.2, 32.6), (35.0, 32.3), (34.9, 32.4)])
     poly_center = Polygon([(34.7, 32.3), (35.0, 32.3), (35.0, 31.8), (34.7, 31.8)])
@@ -57,14 +61,17 @@ def load_fallback_geojson():
     poly_south = Polygon([(34.2, 31.6), (35.5, 31.6), (34.9, 29.5), (34.8, 29.5)])
 
     gdf = gpd.GeoDataFrame({
+        'id': [str(i) for i in range(6)],
         'name': ["מחוז הצפון", "מחוז חיפה", "מחוז המרכז", "מחוז תל אביב", "מחוז ירושלים", "מחוז הדרום"],
         'geometry': [poly_north, poly_haifa, poly_center, poly_tlv, poly_jeru, poly_south]
     }, crs="EPSG:4326")
     
     geojson_data = json.loads(gdf.to_json())
+    for idx, feature in enumerate(geojson_data['features']):
+        feature['id'] = str(idx)
+        
     return geojson_data, gdf
 
-import json
 geojson_raw, gdf = load_fallback_geojson()
 
 # ---------------------------------------------------------
@@ -119,35 +126,33 @@ elif st.session_state.level == 'שכונות':
 # ---------------------------------------------------------
 st.subheader(f"רמה נוכחית: {st.session_state.level}")
 
+num_features = len(geojson_raw['features'])
+
 if st.session_state.level == 'מחוזות':
     df_display = pd.DataFrame({
-        'id': list(range(6)),
-        'name': districts_list,
-        'מפלגה מובילה': ['הליכוד', 'יש עתיד', 'הליכוד', 'יש עתיד', 'יהדות התורה', 'הליכוד'],
-        'אחוז תמיכה': ['34%', '28%', '31%', '35%', '42%', '39%']
+        'id': [str(i) for i in range(num_features)],
+        'name': (districts_list * 5)[:num_features],
+        'מפלגה מובילה': (['הליכוד', 'יש עתיד', 'הליכוד', 'יש עתיד', 'יהדות התורה', 'הליכוד'] * 5)[:num_features],
+        'אחוז תמיכה': (['34%', '28%', '31%', '35%', '42%', '39%'] * 5)[:num_features]
     })
     zoom_level = 7
     center_coords = {"lat": 31.5, "lon": 34.75}
 else:
     df_display = pd.DataFrame({
-        'id': list(range(6)),
-        'name': [f"{st.session_state.level} - אזור {i+1}" for i in range(6)],
-        'מפלגה מובילה': ['יש עתיד', 'הליכוד', 'הציונות הדתית', 'המחנה הממלכתי', 'ש"ס', 'הליכוד'],
-        'אחוז תמיכה': ['40%', '35%', '28%', '22%', '31%', '45%']
+        'id': [str(i) for i in range(num_features)],
+        'name': [f"{st.session_state.level} - אזור {i+1}" for i in range(num_features)],
+        'מפלגה מובילה': (['יש עתיד', 'הליכוד', 'הציונות הדתית', 'המחנה הממלכתי', 'ש"ס', 'הליכוד'] * 5)[:num_features],
+        'אחוז תמיכה': (['40%', '35%', '28%', '22%', '31%', '45%'] * 5)[:num_features]
     })
     zoom_level = 8.5 if st.session_state.level == 'נפות' else 11
     center_coords = {"lat": 32.0, "lon": 34.8}
 
-gdf_map = gdf.copy()
-gdf_map['id'] = gdf_map.index
-gdf_map = gdf_map.merge(df_display, on='id')
-
-# יצירת המפה באמצעות Plotly
+# יצירת המפה באמצעות Plotly (עם חיבור תקין של ID כמחרוזת)
 try:
     fig = px.choropleth_map(
-        gdf_map,
+        df_display,
         geojson=geojson_raw,
-        locations=gdf_map.index,
+        locations='id',
         color='מפלגה מובילה',
         hover_name='name',
         hover_data=['אחוז תמיכה'],
@@ -159,9 +164,9 @@ try:
     )
 except AttributeError:
     fig = px.choropleth_mapbox(
-        gdf_map,
+        df_display,
         geojson=geojson_raw,
-        locations=gdf_map.index,
+        locations='id',
         color='מפלגה מובילה',
         hover_name='name',
         hover_data=['אחוז תמיכה'],
