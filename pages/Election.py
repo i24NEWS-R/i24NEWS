@@ -85,3 +85,19 @@ if gdf is not None:
             gdf,
             geojson=geojson_raw,
             locations=gdf.index,
+            color='מפלגה מובילה',
+            hover_name='region_name',
+            mapbox_style="carto-positron",
+            center={"lat": 31.5, "lon": 34.75},
+            zoom=7,
+            opacity=0.65
+        )
+
+    fig.update_layout(
+        margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        height=650
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.error("לא ניתן היה להוריד את קובץ ה-GeoJSON מכל השרתים. מומלץ לשמור את הקובץ מקומית בתיקיית הפרויקט.")
