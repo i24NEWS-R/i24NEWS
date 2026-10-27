@@ -7,18 +7,24 @@ import requests
 st.set_page_config(page_title="מפת בחירות בישראל", layout="wide")
 st.title("מפת בחירות בישראל - תצוגה רציפה ללא חורים")
 
-# 1. משיכת קובץ ה-GeoJSON אונליין ממקור יציב
+# 1. משיכת קובץ ה-GeoJSON אונליין ממספר מקורות אמינים
 @st.cache_data
-def load_geojson():
+def load_geojson_online():
+    # רשימת מקורות אונליין חלופיים של גבולות גיאוגרפיים (GeoJSON)
     urls = [
-        "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson"
+        "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson",
+        "https://cdn.jsdelivr.net/gh/datasets/geo-boundaries@master/data/ISR.geojson",
+        "https://raw.githubusercontent.com/johan/world.geo.json/master/countries/ISR.geo.json",
+        "https://open-data.s3.amazonaws.com/israel_districts.geojson"
     ]
     
-    headers = {'User-Agent': 'Mozilla/5.0'}
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
     
     for url in urls:
         try:
-            response = requests.get(url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=5)
             if response.status_code == 200:
                 geojson_data = response.json()
                 gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
@@ -29,7 +35,7 @@ def load_geojson():
             
     return None, None
 
-geojson_raw, gdf = load_geojson()
+geojson_raw, gdf = load_geojson_online()
 
 if gdf is not None:
     # זיהוי עמודת השמות הקיימת בקובץ ה-GeoJSON
@@ -100,4 +106,4 @@ if gdf is not None:
 
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.error("לא ניתן היה להוריד את קובץ ה-GeoJSON מכל השרתים. מומלץ לשמור את הקובץ מקומית בתיקיית הפרויקט.")
+    st.error("לא ניתן היה למשוך את הנתונים אונליין מכל המקורות. אנא בדוק את חיבור האינטרנט של השרת.")
