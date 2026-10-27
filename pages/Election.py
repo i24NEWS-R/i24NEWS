@@ -135,4 +135,42 @@ else:
         'מפלגה מובילה': ['יש עתיד', 'הליכוד', 'הציונות הדתית', 'המחנה הממלכתי', 'ש"ס', 'הליכוד'],
         'אחוז תמיכה': ['40%', '35%', '28%', '22%', '31%', '45%']
     })
-    zoom_level = 8.5 if st.session_state.level ==
+    zoom_level = 8.5 if st.session_state.level == 'נפות' else 11
+    center_coords = {"lat": 32.0, "lon": 34.8}
+
+gdf_map = gdf.copy()
+gdf_map['id'] = gdf_map.index
+gdf_map = gdf_map.merge(df_display, on='id')
+
+# יצירת המפה באמצעות Plotly
+try:
+    fig = px.choropleth_map(
+        gdf_map,
+        geojson=geojson_raw,
+        locations=gdf_map.index,
+        color='מפלגה מובילה',
+        hover_name='name',
+        hover_data=['אחוז תמיכה'],
+        color_discrete_map=PARTY_COLORS,
+        map_style="carto-positron",
+        center=center_coords,
+        zoom=zoom_level,
+        opacity=0.7
+    )
+except AttributeError:
+    fig = px.choropleth_mapbox(
+        gdf_map,
+        geojson=geojson_raw,
+        locations=gdf_map.index,
+        color='מפלגה מובילה',
+        hover_name='name',
+        hover_data=['אחוז תמיכה'],
+        color_discrete_map=PARTY_COLORS,
+        mapbox_style="carto-positron",
+        center=center_coords,
+        zoom=zoom_level,
+        opacity=0.7
+    )
+
+fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=650)
+st.plotly_chart(fig, use_container_width=True)
