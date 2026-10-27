@@ -10,7 +10,6 @@ st.title("מפת בחירות בישראל - תצוגה רציפה ללא חור
 # 1. משיכת קובץ ה-GeoJSON אונליין ממקור יציב
 @st.cache_data
 def load_geojson():
-    # קישורים חלופיים יציבים לגבולות המדינה / נפות / מחוזות (GeoJSON)
     urls = [
         "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson"
     ]
@@ -33,10 +32,13 @@ def load_geojson():
 geojson_raw, gdf = load_geojson()
 
 if gdf is not None:
-    # זיהוי עמודת השמות הקיימת בקובץ ה-GeoJSON שנרכש
-    name_column = 'name' if 'name' in gdf.columns else (
-        'shapeName' if 'shapeName' in gdf.columns else gdf.columns[0]
-    )
+    # זיהוי עמודת השמות הקיימת בקובץ ה-GeoJSON
+    if 'name' in gdf.columns:
+        name_column = 'name'
+    elif 'shapeName' in gdf.columns:
+        name_column = 'shapeName'
+    else:
+        name_column = gdf.columns[0]
 
     regions = gdf[name_column].tolist()
     
@@ -65,9 +67,8 @@ if gdf is not None:
     gdf['region_id'] = gdf.index
     gdf = gdf.merge(df_results, on='region_id')
 
-    # 3. יצירת המפה באמצעות Plotly Express (תואם לגרסאות החדשות של Plotly)
+    # 3. יצירת המפה באמצעות Plotly Express
     try:
-        # פלטרפורמה מעודכנת של Plotly
         fig = px.choropleth_map(
             gdf,
             geojson=geojson_raw,
@@ -80,7 +81,6 @@ if gdf is not None:
             opacity=0.65
         )
     except AttributeError:
-        # תמיכה לאחור עבור גרסאות Plotly ישנות יותר
         fig = px.choropleth_mapbox(
             gdf,
             geojson=geojson_raw,
