@@ -12,8 +12,7 @@ st.title("מפת בחירות בישראל - תצוגה רציפה ללא חור
 def load_geojson():
     # קישורים חלופיים יציבים לגבולות המדינה / נפות / מחוזות (GeoJSON)
     urls = [
-        "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson",
-        "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json" # גיבוי טכני למבנה
+        "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson"
     ]
     
     headers = {'User-Agent': 'Mozilla/5.0'}
@@ -66,24 +65,23 @@ if gdf is not None:
     gdf['region_id'] = gdf.index
     gdf = gdf.merge(df_results, on='region_id')
 
-    # 3. יצירת המפה באמצעות Plotly Express
-    fig = px.choropleth_mapbox(
-        gdf,
-        geojson=geojson_raw,
-        locations=gdf.index,
-        color='מפלגה מובילה',
-        hover_name='region_name',
-        mapbox_style="carto-positron",
-        center={"lat": 31.5, "lon": 34.75},
-        zoom=7,
-        opacity=0.65
-    )
-
-    fig.update_layout(
-        margin={"r": 0, "t": 0, "l": 0, "b": 0},
-        height=650
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.error("לא ניתן היה להוריד את קובץ ה-GeoJSON מכל השרתים. מומלץ לשמור את הקובץ מקומית בתיקיית הפרויקט.")
+    # 3. יצירת המפה באמצעות Plotly Express (תואם לגרסאות החדשות של Plotly)
+    try:
+        # פלטרפורמה מעודכנת של Plotly
+        fig = px.choropleth_map(
+            gdf,
+            geojson=geojson_raw,
+            locations=gdf.index,
+            color='מפלגה מובילה',
+            hover_name='region_name',
+            map_style="carto-positron",
+            center={"lat": 31.5, "lon": 34.75},
+            zoom=7,
+            opacity=0.65
+        )
+    except AttributeError:
+        # תמיכה לאחור עבור גרסאות Plotly ישנות יותר
+        fig = px.choropleth_mapbox(
+            gdf,
+            geojson=geojson_raw,
+            locations=gdf.index,
