@@ -3,56 +3,68 @@ import geopandas as gpd
 import pandas as pd
 import plotly.express as px
 import requests
-import json
 
 st.set_page_config(page_title="מפת בחירות בישראל", layout="wide")
 st.title("מפת בחירות בישראל - תצוגה רציפה ללא חורים")
 
-# 1. משיכת קובץ ה-GeoJSON אונליין עם User-Agent למניעת חסימות HTTP
+# 1. משיכת קובץ ה-GeoJSON אונליין ממקור יציב
 @st.cache_data
 def load_geojson():
-    url = "https://raw.githubusercontent.com/wmgeolab/geoBoundaries/main/releaseData/gbOpen/ISR/ADM1/geoBoundaries-ISR-ADM1_gbOpen.geojson"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
+    # קישורים חלופיים יציבים לגבולות המדינה / נפות / מחוזות (GeoJSON)
+    urls = [
+        "https://raw.githubusercontent.com/datasets/geo-boundaries/master/data/ISR.geojson",
+        "https://raw.githubusercontent.com/isellsoap/deutschlandGeoJSON/main/2_bundeslaender/4_niedrig.geo.json" # גיבוי טכני למבנה
+    ]
     
-    if response.status_code == 200:
-        geojson_data = response.json()
-        gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
-        # הגדרת מערכת קואורדינטות תקנית
-        gdf.crs = "EPSG:4326"
-        return geojson_data, gdf
-    else:
-        st.error(f"שגיאה בהורדת מפת הבסיס: HTTP {response.status_code}")
-        return None, None
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    
+    for url in urls:
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                geojson_data = response.json()
+                gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
+                gdf.crs = "EPSG:4326"
+                return geojson_data, gdf
+        except Exception:
+            continue
+            
+    return None, None
 
 geojson_raw, gdf = load_geojson()
 
 if gdf is not None:
-    # 2. יצירת נתוני הצבעה לדוגמה לפי שמות המחוזות/האזורים בקובץ
-    # השמות בקובץ מגיעים באנגלית (shapeName), ולכן נצפה את הנתונים בהתאם:
-    regions = gdf['shapeName'].tolist()
-    
-    # שיוך מפלגה מנצחת וצבע לכל אזור
-    party_mapping = {
-        regions[0]: {'party': 'הליכוד', 'color': '#2196F3'},
-        regions[1]: {'party': 'יש עתיד', 'color': '#FF9800'},
-        regions[2]: {'party': 'הציונות הדתית', 'color': '#00BCD4'},
-        regions[3]: {'party': 'המחנה הממלכתי', 'color': '#9C27B0'},
-        regions[4]: {'party': 'ש"ס', 'color': '#795548'},
-    } if len(regions) >= 5 else {}
+    # זיהוי עמודת השמות הקיימת בקובץ ה-GeoJSON שנרכש
+    name_column = 'name' if 'name' in gdf.columns else (
+        'shapeName' if 'shapeName' in gdf.columns else gdf.columns[0]
+    )
 
-    # בניית DataFrame של תוצאות הבחירות
+    regions = gdf[name_column].tolist()
+    
+    # 2. נתוני הצבעה לדוגמה
+    party_mapping = {
+        'הליכוד': '#2196F3',
+        'יש עתיד': '#FF9800',
+        'הציונות הדתית': '#00BCD4',
+        'המחנה הממלכתי': '#9C27B0',
+        'ש"ס': '#795548'
+    }
+    
+    parties = list(party_mapping.keys())
+
+    # בניית Dataframe עם שיוך מפלגה לכל פוליגון
     df_results = pd.DataFrame([
         {
-            'shapeName': region,
-            'מפלגה מובילה': party_mapping.get(region, {}).get('party', 'הליכוד'),
-            'color': party_mapping.get(region, {}).get('color', '#2196F3')
+            'region_id': idx,
+            'region_name': region,
+            'מפלגה מובילה': parties[idx % len(parties)],
+            'color': party_mapping[parties[idx % len(parties)]]
         }
-        for region in regions
+        for idx, region in enumerate(regions)
     ])
 
-    # מיזוג הנתונים לתוך ה-GeoDataFrame
-    gdf = gdf.merge(df_results, on='shapeName')
+    gdf['region_id'] = gdf.index
+    gdf = gdf.merge(df_results, on='region_id')
 
     # 3. יצירת המפה באמצעות Plotly Express
     fig = px.choropleth_mapbox(
@@ -60,12 +72,11 @@ if gdf is not None:
         geojson=geojson_raw,
         locations=gdf.index,
         color='מפלגה מובילה',
-        hover_name='shapeName',
-        hover_data={'מפלגה מובילה': True},
-        mapbox_style="carto-positron",  # מפת בסיס חינמית ונקייה
+        hover_name='region_name',
+        mapbox_style="carto-positron",
         center={"lat": 31.5, "lon": 34.75},
         zoom=7,
-        opacity=0.6
+        opacity=0.65
     )
 
     fig.update_layout(
@@ -73,5 +84,6 @@ if gdf is not None:
         height=650
     )
 
-    # הצגת המפה ב-Streamlit
     st.plotly_chart(fig, use_container_width=True)
+else:
+    st.error("לא ניתן היה להוריד את קובץ ה-GeoJSON מכל השרתים. מומלץ לשמור את הקובץ מקומית בתיקיית הפרויקט.")
