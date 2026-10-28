@@ -1,3 +1,4 @@
+import io
 import os, re
 import pandas as pd
 import requests
@@ -128,12 +129,25 @@ for item in ITEMS:
 
 current_df = pd.DataFrame(all_rows)
 
-# הוספת פקדי מיון מעל הטבלה
-c_col1, c_col2 = controls_placeholder.columns([3, 1])
+# הוספת פקדי מיון וכפתור ייצוא לאקסל מעל הטבלה
+c_col1, c_col2, c_col3 = controls_placeholder.columns([2, 1, 1])
 with c_col1:
     sort_by = st.selectbox("מיון לפי עמודה:", ["צפיות", "לייקים", "תגובות", "שיתופים", "פלטפורמה", "שם משתמש"], index=0, key="sort_column_select")
 with c_col2:
     sort_ascending = st.checkbox("סדר עולה (Ascending)", value=False, key="sort_ascending_checkbox")
+with c_col3:
+    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True) # ליישור ויזואלי מול שדות הקלט
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+        current_df.to_excel(writer, index=False, sheet_name='October 7 Data')
+    excel_buffer.seek(0)
+    st.download_button(
+        label="📥 ייצוא לאקסל (Excel)",
+        data=excel_buffer,
+        file_name="October7_data.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True
+    )
 
 # המרת עמודות מספריות לצורך מיון נכון
 for col in ["צפיות", "לייקים", "תגובות", "שיתופים"]:
