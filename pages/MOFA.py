@@ -221,7 +221,6 @@ def fetch_single_item(plat, line, url, ig_map):
                 "מזהה_מקור": line
             }
 
-# ניהול מצב האפליקציה ב-Session State
 if "df_data" not in st.session_state:
     st.session_state.df_data = None
 
@@ -251,7 +250,6 @@ table_placeholder = st.container()
 if st.session_state.df_data is not None and not st.session_state.df_data.empty:
     df = st.session_state.df_data
     
-    # אם לחצו על כפתור השליפה הראשי והנתונים עדיין במצב "טוען...", נבצע שליפה מלאה
     if fetch_btn and (df["שם סרטון"] == "טוען נתונים...").any():
         raw_lines = df["מזהה_מקור"].tolist()
         ig_map = get_ig_map(ig_start_date) if platform == "אינסטגרם" else {}
@@ -270,10 +268,33 @@ if st.session_state.df_data is not None and not st.session_state.df_data.empty:
         numeric_vals = pd.to_numeric(df[key], errors="coerce").fillna(0)
         col.markdown(f'<div class="metric-card"><div class="metric-title">{title}</div><div class="metric-value">{int(numeric_vals.sum()):,}</div></div>', unsafe_allow_html=True)
 
-    # הצגת טבלה אינטראקטיבית עם לחצן רענון לכל שורה
     with table_placeholder:
         st.markdown("### 📋 תוצאות השליפה")
         
+        # שורת בקרת מיון
+        col_title, col_sort = st.columns([2, 2])
+        with col_sort:
+            sort_option = st.selectbox(
+                "מיון טבלה לפי:", 
+                ["ללא מיון (סדר מקורי)", "צפיות (מהגבוה לנמוך)", "לייקים (מהגבוה לנמוך)", "תגובות (מהגבוה לנמוך)", "שיתופים (מהגבוה לנמוך)"],
+                key="table_sort_select"
+            )
+
+        # ביצוע מיון ל-DataFrame המוצג בלבד מבלי לשבש את האינדקסים המקוריים
+        display_df = df.copy()
+        if sort_option == "צפיות (מהגבוה לנמוך)":
+            display_df["צפיות_num"] = pd.to_numeric(display_df["צפיות"], errors="coerce").fillna(0)
+            display_df = display_df.sort_values(by="צפיות_num", ascending=False).drop(columns=["צפיות_num"])
+        elif sort_option == "לייקים (מהגבוה לנמוך)":
+            display_df["לייקים_num"] = pd.to_numeric(display_df["לייקים"], errors="coerce").fillna(0)
+            display_df = display_df.sort_values(by="לייקים_num", ascending=False).drop(columns=["לייקים_num"])
+        elif sort_option == "תגובות (מהגבוה לנמוך)":
+            display_df["תגובות_num"] = pd.to_numeric(display_df["תגובות"], errors="coerce").fillna(0)
+            display_df = display_df.sort_values(by="תגובות_num", ascending=False).drop(columns=["תגובות_num"])
+        elif sort_option == "שיתופים (מהגבוה לנמוך)":
+            display_df["שיתופים_num"] = pd.to_numeric(display_df["שיתופים"], errors="coerce").fillna(0)
+            display_df = display_df.sort_values(by="שיתופים_num", ascending=False).drop(columns=["שיתופים_num"])
+
         # כותרות הטבלה
         header_cols = st.columns([1, 1.5, 0.6, 4.4, 1.2, 0.8, 0.8, 0.8, 0.8, 0.6])
         headers = ["פלטפורמה", "משתמש", "תמונה", "כותרת / סרטון", "תאריך", "צפיות", "לייקים", "תגובות", "שיתופים", "פעולה"]
@@ -281,17 +302,18 @@ if st.session_state.df_data is not None and not st.session_state.df_data.empty:
             hc.markdown(f"**{h}**")
         st.markdown("---")
 
+        # אייקונים רשמיים של FontAwesome כמו שביקשת
         icon_mapping = {
-            "יוטיוב": '📺 יוטיוב',
-            "טיקטוק": '🎵 טיקטוק',
-            "טוויטר": '🐦 טוויטר',
-            "פייסבוק": '📘 פייסבוק',
-            "אינסטגרם": '📸 אינסטגרם'
+            "יוטיוב": '<div style="text-align: center;"><i class="fa-brands fa-youtube" style="color: #ff0000; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">יוטיוב</span></div>',
+            "טיקטוק": '<div style="text-align: center;"><i class="fa-brands fa-tiktok" style="font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טיקטוק</span></div>',
+            "טוויטר": '<div style="text-align: center;"><i class="fa-brands fa-twitter" style="color: #1da1f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">טוויטר</span></div>',
+            "פייסבוק": '<div style="text-align: center;"><i class="fa-brands fa-facebook" style="color: #1877f2; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">פייסבוק</span></div>',
+            "אינסטגרם": '<div style="text-align: center;"><i class="fa-brands fa-instagram" style="color: #e4405f; font-size: 1.2rem;"></i><br><span style="font-size: 0.8rem; color: #334155;">אינסטגרם</span></div>'
         }
 
         ig_map_global = get_ig_map(ig_start_date) if platform == "אינסטגרם" else {}
 
-        for idx, row in df.iterrows():
+        for original_idx, row in display_df.iterrows():
             r_cols = st.columns([1, 1.5, 0.6, 4.4, 1.2, 0.8, 0.8, 0.8, 0.8, 0.6])
             
             plat = row["פלטפורמה"]
@@ -301,7 +323,8 @@ if st.session_state.df_data is not None and not st.session_state.df_data.empty:
             link = row["קישור"]
             date_val = row["תאריך"]
             
-            r_cols[0].write(icon_mapping.get(plat, plat))
+            # הצגת האייקון הרשמי המעוצב באמצעות HTML
+            r_cols[0].markdown(icon_mapping.get(plat, f'<div style="text-align: center;">{plat}</div>'), unsafe_allow_html=True)
             r_cols[1].write(user if user != "טוען..." else "⏳ טוען...")
             
             if pd.notna(thumb) and str(thumb).startswith("http"):
@@ -320,12 +343,12 @@ if st.session_state.df_data is not None and not st.session_state.df_data.empty:
             r_cols[7].write(f"{int(pd.to_numeric(row['תגובות'], errors='coerce') or 0):,}")
             r_cols[8].write(f"{int(pd.to_numeric(row['שיתופים'], errors='coerce') or 0):,}")
             
-            # לחצן רענון לשורה הספציפית
-            if r_cols[9].button("🔄", key=f"refresh_row_{idx}", help="רענן שורה זו"):
+            # לחצן רענון לשורה הספציפית לפי האינדקס האמיתי שלה בסטייט
+            if r_cols[9].button("🔄", key=f"refresh_row_{original_idx}", help="רענן שורה זו"):
                 with st.spinner("מעדכן..."):
                     line_id = row.get("מזהה_מקור", "")
                     updated_row = fetch_single_item(plat, line_id, link, ig_map_global)
-                    st.session_state.df_data.iloc[idx] = updated_row
+                    st.session_state.df_data.iloc[original_idx] = updated_row
                     st.rerun()
 
     # ייצוא לאקסל
